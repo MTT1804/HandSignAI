@@ -1,5 +1,5 @@
 # Hand Gesture Recognition Diploma Project
-
+[English](README.md) | [Polski](README.pl.md)
 This project was developed as part of the **Diploma Project** course in the 6th semester of Applied Computer Science at Warsaw University of Technology.
 **Author:** Mateusz Tyl
 
