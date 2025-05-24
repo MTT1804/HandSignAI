@@ -1,0 +1,1 @@
+Folder na pliki z danymi treningowymi w formacie csv (domyślnie: data.csv).

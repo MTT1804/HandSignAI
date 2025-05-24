@@ -1,0 +1,1 @@
+Folder zawierający narzędzia pomocnicze.
