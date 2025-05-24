@@ -1,143 +1,156 @@
-# Projekt Dyplomowy
+# Hand Gesture Recognition Diploma Project
 
-Projekt w ramach przedmiotu **Projekt Dyplomowy** na semestrze 6 Informatyki Stosowanej na Politechnice Warszawskiej.
+This project was developed as part of the **Diploma Project** course in the 6th semester of Applied Computer Science at Warsaw University of Technology.
+**Author:** Mateusz Tyl
 
-## Spis treści
+## Table of Contents
 
-* [Opis](#opis)
-* [Wymagania wstępne](#wymagania-wstępne)
-* [Instalacja](#instalacja)
-* [Struktura projektu](#struktura-projektu)
-* [Uruchomienie](#uruchomienie)
-* [Użycie](#użycie)
+* [Overview](#overview)
+* [Prerequisites](#prerequisites)
+* [Installation](#installation)
+* [Project Structure](#project-structure)
+* [Running the App](#running-the-app)
+* [Usage](#usage)
+* [Quick Start](#quick-start)
 
-## Opis
+## Overview
 
-Aplikacja służy do
+This application enables you to:
 
-* zbierania danych dłoni i landmarków,
-* trenowania modelu sieci neuronowej,
-* detekcji liter w czasie rzeczywistym,
-* rozpoznawania tekstu migowego według dostarczonego pliku tekstowego.
+* Collect hand image data and 21 landmark coordinates
+* Train a neural network model on that data
+* Perform real-time hand-gesture (letter) detection
+* “Sign” text from a provided text file in a guided exercise mode
 
-## Wymagania wstępne
+## Prerequisites
 
-* Python **3.10.11**
-* Virtualenv
-* System operacyjny: Windows, Linux lub macOS
+* **Python 3.10.11**
+* venv (Python virtual environment)
+* Operating system: Windows, Linux or macOS
 
-## Instalacja
+## Installation
 
-1. Sklonuj repozytorium:
-
-   ```bash
-   git clone https://github.com/MTT555/Projekt_dyplomowy.git
-   cd Projekt_dyplomowy
-   ```
-2. Utwórz i aktywuj wirtualne środowisko:
-
-   ```bash
+1. **Clone the repository**
+   git clone [https://github.com/MTT1804/HandSignAI](https://github.com/MTT1804/HandSignAI)
+   cd HandSignAI
+2. **Create and activate a virtual environment**
    python -m venv venv
+
    # Windows
+
    venv\Scripts\activate
+
    # Linux / macOS
+
    source venv/bin/activate
-   ```
-3. Zainstaluj zależności:
-
-   ```bash
+3. **Install dependencies**
    pip install -r requirements.txt
-   ```
 
-## Struktura projektu
+## Project Structure
 
-```text
-Projekt_dyplomowy/
-├── main/                   # Główny kod aplikacji
-│   ├── app_main.py         # Logika GUI i główna klasa aplikacji
-│   ├── gui_collect.py      # Zakładka zbierania danych
-│   ├── gui_train.py        # Zakładka treningu modelu
-│   ├── gui_detection.py    # Zakładka detekcji znaków
-│   ├── gui_text_detection.py # Zakładka wykrywania tekstu migowego
-│   ├── gui_instructions.py # Zakładka instrukcji w aplikacji
-│   ├── detection.py        # Funkcje detekcji dłoni i predykcji
-│   ├── training.py         # Skrypt trenowania modelu
-│   └── utils.py            # Pomocnicze funkcje
-├── images/                 # Zapisane obrazy dłoni
-├── data/                   # Plik CSV z danymi landmarków
-├── models/                 # Wytrenowane modele (.h5) i skalery (.pkl)
-├── other/                  # Logi aplikacji i inne pliki
-├── text_files/             # Przykładowe pliki tekstowe do detekcji
-├── requirements.txt        # Lista zależności Pythona
-└── README.md               # Ten plik
-```
+main/ – core application code
 
-## Uruchomienie
+main.py – entry point that launches the GUI
 
-1. Przejdź do katalogu z kodem aplikacji:
+app_main.py – main HandDataCollectorApp class, UI setup & event loop
 
-   ```bash
+gui_collect.py – “Data Collection” tab (camera preview, save snapshots & CSV)
+
+gui_train.py – “Model Training” tab (train/test split, epochs, callbacks)
+
+gui_detection.py – “Real-time Detection” tab (live gesture inference)
+
+gui_text_detection.py – “Text Signing” tab (guided text-based practice)
+
+gui_instructions.py – “Instructions” tab (built-in user guide)
+
+detection.py – low-level MediaPipe + model inference routines
+
+training.py – model‐building & training logic (TensorFlow/Keras)
+
+utils.py – helper functions (keyboard disabling, logging, etc.)
+
+locales.py – translation strings loader and lookup
+
+images/ – captured hand snapshots, organized by label
+
+data/ – data.csv: collected 21-landmark coordinates + label + index
+
+models/ – saved Keras model file (.h5) and scaler pickle (.pkl)
+
+other/ – application logs (logs.log) and miscellaneous outputs
+
+text_files/ – sample .txt files used in the “Text Signing” tab
+
+requirements.txt – Python dependencies
+
+README.md – project overview, installation & usage instructions
+
+## Running the App
+
+1. **Change into the main folder**
    cd main
-   ```
-2. Uruchom aplikację:
-
-   ```bash
+2. **Launch the application**
    python main.py
-   ```
 
-## Użycie
+## Usage
 
-Po uruchomieniu aplikacji dostępne są cztery główne zakładki:
+When you launch the application, you’ll see five main tabs:
 
-1. **Zbieranie danych** – zapisuje obraz dłoni oraz współrzędne landmarków do pliku CSV i folderu `images/`.
-2. **Trening modelu** – ustawia parametry (test size, random state, epochs, batch size, patience) i trenuje model, zapisując wagę modelu i skaler.
-3. **Detekcja znaków** – rozpoznaje litery w czasie rzeczywistym i wyświetla top10 prawdopodobieństw.
-4. **Miganie tekstu** – porównuje rozpoznane litery z dostarczonym plikiem tekstowym i podświetla poprawne znaki.
+1. **Data Collection**
+   Capture hand images and save 21 hand-landmark coordinates to `data/data.csv` and snapshots in `images/`.
+2. **Model Training**
+   Configure parameters (test size, random seed, epochs, batch size, patience) and train the neural network, saving the `.h5` model and `.pkl` scaler.
+3. **Real-time Detection**
+   Perform live gesture recognition—detected letters stream into the text pane, and a “Top-10” probabilities window shows confidence scores.
+4. **Text Signing**
+   Load a text file, then practice “signing” each character; correct signs turn green and statistics update live.
+5. **Instructions**
+   A full user guide is built into the app under the **Instructions** tab.
 
-Szczegółowa instrukcja jest dostępna w aplikacji, w zakładce **Instrukcja**.
+## Quick Start
 
-## Szybki start – od kolekcji danych do detekcji
+Follow these four steps to go from data collection to real-time detection:
 
-Poniższe kroki pomogą Ci błyskawicznie uruchomić cały pipeline: zebranie danych, trening modelu i detekcję w czasie rzeczywistym.
+### 1. Collect Data
 
-### 1. Zbieranie danych
+1. Launch the app and open the **Data Collection** tab.
+2. Select your camera and enter the letter/number you wish to record.
+3. Position your hand clearly in front of the camera (avoid shadows).
+4. Click **Save Data** (or press **Enter**) to record the 21 landmarks to CSV and save a snapshot under `images/`.
+5. Repeat for each class; collect at least **100–200 samples** per class at varying angles.
 
-1. **Uruchom aplikację** i przejdź do zakładki **„Zbieranie danych”**.  
-2. **Wybierz kamerę** i wpisz aktualnie nagrywaną literę/cyfrę.  
-3. **Ustaw dłoń w wyraźnym świetle**, unikaj cieni i prześwietleń.  
-4. **Kliknij „Zapisz dane”** (lub naciśnij Enter), aby zapisać współrzędne 21 landmarków dłoni do CSV oraz zdjęcie do folderu `images/` 
-5. Powtórz dla każdej klasy, zbierając co najmniej **100–200 próbek** na klasę, poruszając dłonią w różnych kątach.
+### 2. CSV Format
 
-### 2. Struktura pliku CSV
+Your file `data/data.csv` will have **44 columns** per row:
 
-- Plik `data/data.csv` zawiera wiersze o długości **44 kolumn**:  
-  - `x0, y0, x1, y1, …, x20, y20` (współrzędne)  
-  - `label` (litera/cyfra)  
-  - `index` (numer próbki)
+* `x0, y0, x1, y1, …, x20, y20` — normalized landmark coordinates
+* `label` — the letter or digit
+* `index` — sample index
 
-Sprawdź nagłówek, żeby upewnić się, że wszystkie kolumny są obecne.
+Verify the header to ensure all columns are present.
 
-### 3. Trening modelu
+### 3. Train the Model
 
-1. Przejdź do zakładki **„Trening modelu”**.  
-2. **Wskaż ścieżkę** do CSV, pliku do zapisu modelu (`.h5`) i skalera (`.pkl`).  
-3. Ustaw parametry:
-   - **Test size**: 0.1–0.2  
-   - **Batch size**: 16–32  
-   - **Epochs**: 20–50  
-   - **Patience**: 5
-  Lub ustaw własne
-4. Kliknij **„Rozpocznij trening”**. Proces odbywa się w tle, a postęp widać na pasku.  
-5. Po zakończeniu zobaczysz zapisany model i skalera oraz wynik accuracy na zbiorze testowym
+1. Go to the **Model Training** tab.
+2. Point to your CSV, model output path (`.h5`) and scaler output path (`.pkl`).
+3. Adjust parameters as needed:
 
-### 4. Detekcja w czasie rzeczywistym
+   * **Test size**: 0.1–0.2
+   * **Batch size**: 16–32
+   * **Epochs**: 20–50
+   * **Patience**: 5
+4. Click **Start Training**. Progress runs in the background.
+5. Once training completes, review test accuracy and find your saved model and scaler.
 
-1. Przejdź do zakładki **„Detekcja znaków”**.  
-2. Upewnij się, że masz załadowany właściwy model i skaler.  
-3. **Ustaw interwał** (np. 1000 ms) i **próg pewności** (np. 0.7).  
-4. Kliknij **„Start Detekcji”** – rozpoznane litery będą pojawiać się w polu tekstowym.  
-5. (Opcjonalnie) Włącz tryb **„wstawiaj znak tylko po Enterze”**, by potwierdzać wyniki ręcznie
+### 4. Real-time Detection
+
+1. Switch to the **Real-time Detection** tab.
+2. Ensure you have the correct model and scaler loaded.
+3. Set your **interval** (e.g. 1000 ms) and **confidence threshold** (e.g. 0.7).
+4. Click **Start Detection**—recognized letters will appear in the text box.
+5. (Optional) Enable **“Insert only on Enter”** mode to manually confirm each prediction.
 
 ---
 
-*Teraz wystarczy uruchomić appkę i od razu zacząć zbierać, trenować i testować rozpoznawanie znaków!*  
+You’re all set! Collect, train, and test your own hand-gesture recognition pipeline. Enjoy!
