@@ -1,5 +1,6 @@
 import os
 import tkinter as tk
+import tkinter.font as tkfont
 import threading
 from tkinter import ttk, scrolledtext, messagebox
 import cv2
@@ -57,11 +58,14 @@ def run_text_detection(app):
     mp_hands = mp.solutions.hands
     hands = mp_hands.Hands(max_num_hands=1, min_detection_confidence=0.5, min_tracking_confidence=0.5)
     mp_drawing = mp.solutions.drawing_utils
-    cap = app.open_camera(app.current_camera_index)
+    # Reuse the shared capture so preview (and restart) work consistently.
+    cap = getattr(app, "cap", None)
+    if cap is None or not cap.isOpened():
+        cap = app.open_camera(app.current_camera_index)
+        app.cap = cap
 
     def update_text_detection():
         if not app.text_detection_running:
-            cap.release()
             hands.close()
             return
 
@@ -140,58 +144,72 @@ def update_text_stats(app):
     app.text_stats_label.config(text=text_ok + "\n" + text_fail + "\n" + text_remain)
 
 def create_text_detection_tab(app):
+    app.tab_text_detection.grid_rowconfigure(0, weight=1)
+    app.tab_text_detection.grid_columnconfigure(0, weight=1)
+
     main_frame = ttk.Frame(app.tab_text_detection)
-    main_frame.pack(fill=tk.BOTH, expand=True)
+    main_frame.grid(row=0, column=0, sticky="nsew")
 
-    left = ttk.Frame(main_frame)
-    left.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-    app.text_cam_combo = ttk.Combobox(
-        left,
-        textvariable=app.camera_var,
-        values=[str(i) for i in app.available_cameras],
-        state="readonly",
-        width=3
-    )
-    app.text_cam_combo.set(app.current_camera_index)
-    app.text_cam_combo.pack(anchor="center", pady=(5,0))
-    app.text_cam_combo.bind("<<ComboboxSelected>>", app.on_camera_select)
+    # 2-row layout:
+    # - row 0: controls (buttons/entries)
+    # - row 1: camera + text (text height driven by the camera image)
+    main_frame.grid_rowconfigure(0, weight=0)
+    main_frame.grid_rowconfigure(1, weight=0)
+    main_frame.grid_columnconfigure(0, weight=2)
+    main_frame.grid_columnconfigure(1, weight=1)
 
-    app.text_restart_cam_btn = ttk.Button(
-        left,
-        text=tr("btn_restart_camera"),
-        command=app.restart_camera
-    )
-    app.text_restart_cam_btn.pack(anchor="center", pady=(0,5))
-    disable_space_activation(app.text_restart_cam_btn)
-    right = ttk.Frame(main_frame, width=300)
-    right.pack(side=tk.RIGHT, fill=tk.Y)
+    controls = ttk.Frame(main_frame)
+    controls.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 8))
+    controls.grid_columnconfigure(0, weight=1)
 
-    app.text_det_camera_label = ttk.Label(left, text=tr("lbl_cam_preview_text"), font=("Roboto", 12))
-    app.text_det_camera_label.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+    app.text_det_camera_label = ttk.Label(main_frame, text=tr("lbl_cam_preview_text"), font=("Roboto", 12), anchor="n")
+    app.text_det_camera_label.grid(row=1, column=0, sticky="nw")
+
+    right = ttk.Frame(main_frame)
+    right.grid(row=1, column=1, sticky="nsew", padx=(10, 0))
+    # Don't let the text widget stretch vertically; its height is controlled
+    # by _sync_text_height_to_camera.
+    right.grid_rowconfigure(0, weight=0)
+    right.grid_columnconfigure(0, weight=1)
 
     app.text_detection_text = scrolledtext.ScrolledText(right, height=20, wrap=tk.WORD, font=("Roboto", 12))
-    app.text_detection_text.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+    app.text_detection_text.grid(row=0, column=0, sticky="nw")
     app.text_detection_text.tag_config("correct", foreground="green", font=("Roboto", 12, "bold"))
 
-    interval_frame = ttk.Frame(right)
-    interval_frame.pack(side=tk.TOP, fill=tk.X, pady=5)
+    def _sync_text_height_to_camera(_event=None):
+        h = app.text_det_camera_label.winfo_height()
+        if h <= 1:
+            return
+        try:
+            f = tkfont.Font(font=app.text_detection_text["font"])
+            line_h = max(1, int(f.metrics("linespace")))
+        except Exception:
+            line_h = 18
+        lines = max(3, int(h / line_h))
+        app.text_detection_text.configure(height=lines)
+
+    app.text_det_camera_label.bind("<Configure>", _sync_text_height_to_camera)
+
+    interval_frame = ttk.Frame(controls)
+    interval_frame.grid(row=0, column=0, sticky="ew", pady=5)
     app.td_interval_label = ttk.Label(interval_frame, text=tr("lbl_interval"), font=("Roboto", 12))
-    app.td_interval_label.pack(side=tk.LEFT, padx=5)
+    app.td_interval_label.grid(row=0, column=0, sticky="w", padx=5)
     app.text_interval_var = tk.StringVar(value="50")
-    ttk.Entry(interval_frame, textvariable=app.text_interval_var, width=7, font=("Roboto", 12)).pack(side=tk.LEFT, padx=5)
+    ttk.Entry(interval_frame, textvariable=app.text_interval_var, width=7, font=("Roboto", 12)).grid(row=0, column=1, sticky="w", padx=5)
 
     app.td_threshold_label = ttk.Label(interval_frame, text=tr("lbl_threshold"), font=("Roboto", 12))
-    app.td_threshold_label.pack(side=tk.LEFT, padx=5)
+    app.td_threshold_label.grid(row=0, column=2, sticky="w", padx=5)
     app.text_threshold_var = tk.StringVar(value="0.7")
-    ttk.Entry(interval_frame, textvariable=app.text_threshold_var, width=5, font=("Roboto", 12)).pack(side=tk.LEFT, padx=5)
+    ttk.Entry(interval_frame, textvariable=app.text_threshold_var, width=5, font=("Roboto", 12)).grid(row=0, column=3, sticky="w", padx=5)
 
-    file_frame = ttk.Frame(right)
-    file_frame.pack(side=tk.TOP, fill=tk.X, pady=5)
+    file_frame = ttk.Frame(controls)
+    file_frame.grid(row=1, column=0, sticky="ew", pady=5)
     app.td_choose_file_lbl = ttk.Label(file_frame, text=tr("lbl_select_text_file"), font=("Roboto", 12))
-    app.td_choose_file_lbl.pack(side=tk.LEFT, padx=5)
+    app.td_choose_file_lbl.grid(row=0, column=0, sticky="w", padx=5)
     app.text_file_var = tk.StringVar()
     app.text_file_combo = ttk.Combobox(file_frame, textvariable=app.text_file_var, state="readonly")
-    app.text_file_combo.pack(side=tk.LEFT, padx=5)
+    app.text_file_combo.grid(row=0, column=1, sticky="ew", padx=5)
+    file_frame.grid_columnconfigure(1, weight=1)
 
     text_files_dir = "text_files"
     if os.path.isdir(text_files_dir):
@@ -199,15 +217,35 @@ def create_text_detection_tab(app):
     else:
         app.log(tr("log_missing_dir", dir=text_files_dir))
 
-    btn_frame = ttk.Frame(right)
-    btn_frame.pack(side=tk.TOP, fill=tk.X, pady=5)
+    btn_frame = ttk.Frame(controls)
+    btn_frame.grid(row=2, column=0, sticky="w", pady=5)
+
+    # Camera controls moved to the bottom, next to other buttons
+    app.text_cam_combo = ttk.Combobox(
+        btn_frame,
+        textvariable=app.camera_var,
+        values=[str(i) for i in app.available_cameras],
+        state="readonly",
+        width=3
+    )
+    app.text_cam_combo.set(app.current_camera_index)
+    app.text_cam_combo.grid(row=0, column=0, padx=(5, 5))
+    app.text_cam_combo.bind("<<ComboboxSelected>>", app.on_camera_select)
+
+    app.text_restart_cam_btn = ttk.Button(
+        btn_frame,
+        text=tr("btn_restart_camera").replace("\n", " "),
+        command=app.restart_camera
+    )
+    app.text_restart_cam_btn.grid(row=0, column=1, padx=5)
+    disable_space_activation(app.text_restart_cam_btn)
 
     flip_h_btn = ttk.Button(
         btn_frame,
         text=tr("btn_flip_horizontal") or "Flip poziomo",
         command=app.toggle_flip_horizontal
     )
-    flip_h_btn.pack(side=tk.LEFT, padx=5)
+    flip_h_btn.grid(row=0, column=2, padx=5)
     disable_space_activation(flip_h_btn)
 
     flip_v_btn = ttk.Button(
@@ -215,14 +253,14 @@ def create_text_detection_tab(app):
         text=tr("btn_flip_vertical") or "Flip pionowo",
         command=app.toggle_flip_vertical
     )
-    flip_v_btn.pack(side=tk.LEFT, padx=5)
+    flip_v_btn.grid(row=0, column=3, padx=5)
     disable_space_activation(flip_v_btn)
 
     app.td_load_btn = ttk.Button(btn_frame, text=tr("btn_load_text"))
-    app.td_load_btn.pack(side=tk.LEFT, padx=5)
+    app.td_load_btn.grid(row=0, column=4, padx=5)
 
-    app.text_stats_label = ttk.Label(right, text="", font=("Roboto", 12))
-    app.text_stats_label.pack(side=tk.TOP, fill=tk.X, pady=5)
+    app.text_stats_label = ttk.Label(controls, text="", font=("Roboto", 12))
+    app.text_stats_label.grid(row=3, column=0, sticky="ew", pady=5)
 
     def original_load_text_file():
         file_name = app.text_file_var.get()
@@ -287,9 +325,9 @@ def create_text_detection_tab(app):
         app.td_stop_btn.config(state="disabled")
 
     app.td_start_btn = ttk.Button(btn_frame, text=tr("btn_start"), command=validated_start_td)
-    app.td_start_btn.pack(side=tk.LEFT, padx=5)
+    app.td_start_btn.grid(row=0, column=5, padx=5)
     app.td_stop_btn = ttk.Button(btn_frame, text=tr("btn_stop"), state="disabled", command=original_stop_td)
-    app.td_stop_btn.pack(side=tk.LEFT, padx=5)
+    app.td_stop_btn.grid(row=0, column=6, padx=5)
 
     app.text_file_content = ""
     app.current_char_index = 0

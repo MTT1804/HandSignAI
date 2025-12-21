@@ -66,11 +66,14 @@ def run_detection(app):
     app.last_detected_letter = ""
     app.next_letter = ""
 
-    cap = app.open_camera(app.current_camera_index)
+    # Reuse the shared capture so preview (and restart) work consistently.
+    cap = getattr(app, "cap", None)
+    if cap is None or not cap.isOpened():
+        cap = app.open_camera(app.current_camera_index)
+        app.cap = cap
 
     def update_detection():
         if not app.detection_running:
-            cap.release()
             hands.close()
             return
 

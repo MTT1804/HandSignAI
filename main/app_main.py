@@ -30,50 +30,38 @@ import gui_text_detection
 from utils import disable_space_activation, TextRedirector
 
 class ScrollableFrame(ttk.Frame):
-    """
-    A vertically- (and horizontally-) scrollable frame that binds the mouse wheel
-    when the cursor is over the canvas. Works on Windows, macOS and Linux.
-    """
     def __init__(self, container, *args, **kwargs):
         super().__init__(container, *args, **kwargs)
-
-        # Create canvas and scrollbars
         self.canvas = tk.Canvas(self, highlightthickness=0)
         self.v_scroll = ttk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
         self.h_scroll = ttk.Scrollbar(self, orient="horizontal", command=self.canvas.xview)
-        self.canvas.configure(yscrollcommand=self.v_scroll.set,
-                              xscrollcommand=self.h_scroll.set)
-
-        # Place them in a grid
+        self.canvas.configure(yscrollcommand=self.v_scroll.set, xscrollcommand=self.h_scroll.set)
         self.canvas.grid(row=0, column=0, sticky="nsew")
         self.v_scroll.grid(row=0, column=1, sticky="ns")
         self.h_scroll.grid(row=1, column=0, sticky="ew")
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)
-
-        # This is the frame that will hold your widgets
         self.scrollable_frame = ttk.Frame(self.canvas)
         self.scrollable_frame.bind(
-            "<Configure>",
-            lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+            "<Configure>", lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all"))
         )
+        self._window = self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
 
-        # Embed the inner frame into the canvas
-        self._window = self.canvas.create_window((0, 0),
-                                                 window=self.scrollable_frame,
-                                                 anchor="nw")
+        # Make the embedded frame track the canvas width so content can expand horizontally
+        # (prevents large empty area on the right when the app window is wide).
+        def _sync_width(event):
+            self.canvas.itemconfigure(self._window, width=event.width)
 
-        # Bindings to make the mouse wheel work only when pointer is over the canvas
+        self.canvas.bind("<Configure>", _sync_width)
+
         system = platform.system()
         if system in ("Windows", "Darwin"):
-            # Windows and macOS use <MouseWheel>
             self.canvas.bind("<Enter>", lambda e: self.canvas.bind_all("<MouseWheel>", self._on_mousewheel))
             self.canvas.bind("<Leave>", lambda e: self.canvas.unbind_all("<MouseWheel>"))
         else:
-            # Linux uses Button-4 (scroll up) and Button-5 (scroll down)
             self.canvas.bind("<Enter>", lambda e: (
-                self.canvas.bind_all("<Button-4>",   lambda ev: self.canvas.yview_scroll(-1, "units")),
-                self.canvas.bind_all("<Button-5>",   lambda ev: self.canvas.yview_scroll( 1, "units"))
+                self.canvas.bind_all("<Button-4>", lambda ev: self.canvas.yview_scroll(-1, "units")),
+                self.canvas.bind_all("<Button-5>", lambda ev: self.canvas.yview_scroll(1, "units"))
             ))
             self.canvas.bind("<Leave>", lambda e: (
                 self.canvas.unbind_all("<Button-4>"),
@@ -81,88 +69,111 @@ class ScrollableFrame(ttk.Frame):
             ))
 
     def _on_mousewheel(self, event):
-        """
-        Generic mousewheel handler for Windows/macOS.
-        event.delta is ±120 per notch.
-        """
         self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
 
 class HandDataCollectorApp:
     def __init__(self, root):
-        # ---------- basic state ----------
         self.root = root
+        self.theme_var = tk.StringVar(value="light")
         set_language("en")
         self.language_var = tk.StringVar(value="en")
-
-        # ——— language selector ———
-        lang_frame = ttk.Frame(self.root)
-        lang_frame.pack(side="top", fill="x", pady=5, padx=10)
-
-        self.lang_label = ttk.Label(lang_frame, text=tr("language_label"))
-        self.lang_label.pack(side="left")
-
+        self.ui_scale = self._compute_ui_scale()
+        try:
+            # Shrink UI on high DPI/small screens so the layout stays accessible without excessive scrolling.
+            self.root.tk.call("tk", "scaling", self.ui_scale)
+        except tk.TclError:
+            pass
+        self.root.title(tr("main_window_title"))
+        self.root.minsize(self._s(1100), self._s(750))
+        try:
+            self.root.state("zoomed")
+        except tk.TclError:
+            self.root.attributes("-fullscreen", True)
+        self.root.rowconfigure(1, weight=1)
+        self.root.columnconfigure(0, weight=1)
+        self.top_bar = ttk.Frame(self.root, padding=(self._s(16), self._s(10)))
+        self.top_bar.grid(row=0, column=0, sticky="ew")
+        self.top_bar.columnconfigure(3, weight=1)
+        self.brand_label = ttk.Label(self.top_bar, text="HandSignAI", style="Accent.TLabel")
+        self.brand_label.grid(row=0, column=0, sticky="w")
+        self.lang_label = ttk.Label(self.top_bar, text=tr("language_label"))
+        self.lang_label.grid(row=0, column=1, padx=(16, 6))
         self.lang_combo = ttk.Combobox(
-            lang_frame,
+            self.top_bar,
             textvariable=self.language_var,
-            values=["en","pl"],
+            values=["en", "pl"],
             state="readonly",
-            width=5
+            width=6
         )
-        self.lang_combo.pack(side="left", padx=(5,0))
-        self.lang_combo.bind("<<ComboboxSelected>>", self.change_language)                               # default language
-        self.root.title(tr("main_window_title"))  
-
-        # UI‑controlled variables
+        self.lang_combo.grid(row=0, column=2, sticky="w")
+        self.lang_combo.bind("<<ComboboxSelected>>", self.change_language)
+        self.theme_label = ttk.Label(self.top_bar, text=tr("theme_label"))
+        self.theme_label.grid(row=0, column=3, padx=(16, 6), sticky="e")
+        self.theme_combo = ttk.Combobox(
+            self.top_bar,
+            textvariable=self.theme_var,
+            values=["light", "dark", "high-contrast"],
+            state="readonly",
+            width=14
+        )
+        self.theme_combo.grid(row=0, column=4, sticky="w")
+        self.theme_combo.bind("<<ComboboxSelected>>", self.change_theme)
+        self.paned = ttk.Panedwindow(self.root, orient=tk.VERTICAL)
+        self.paned.grid(row=1, column=0, sticky="nsew")
+        self.content_frame = ttk.Frame(self.paned, padding=(self._s(12), self._s(12)))
+        self.logs_frame = ttk.Frame(self.paned, padding=(self._s(12), self._s(8)))
+        self.paned.add(self.content_frame, weight=5)
+        self.paned.add(self.logs_frame, weight=2)
+        self.content_frame.rowconfigure(0, weight=1)
+        self.content_frame.columnconfigure(0, weight=1)
         self.interval_var = tk.StringVar(value="1000")
         self.enter_mode_var = tk.BooleanVar(value=False)
         self.show_overlays_var = tk.BooleanVar(value=True)
-
-        # ---------- logs ----------
         self.logs_dir = "other"
         self.logs_file_path = os.path.join(self.logs_dir, "logs.log")
         if not os.path.exists(self.logs_dir):
             os.makedirs(self.logs_dir, exist_ok=True)
         self.log_file = open(self.logs_file_path, mode='w', encoding='utf-8')
+        self.content_scroller = ScrollableFrame(self.content_frame)
+        self.content_scroller.grid(row=0, column=0, sticky="nsew")
+        self.content_scroller.grid_rowconfigure(0, weight=1)
+        self.content_scroller.grid_columnconfigure(0, weight=1)
 
-        # ---------- main layout ----------
-        self.main_frame = ScrollableFrame(self.root)
-        self.main_frame.pack(fill=tk.BOTH, expand=True)
-
-        self.notebook = ttk.Notebook(self.main_frame.scrollable_frame)
-        self.notebook.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
-
-        self.tab_collect = ttk.Frame(self.notebook)
+        # Allow notebook to expand within the embedded scrollable frame.
+        self.content_scroller.scrollable_frame.grid_rowconfigure(0, weight=1)
+        self.content_scroller.scrollable_frame.grid_columnconfigure(0, weight=1)
+        self.notebook = ttk.Notebook(self.content_scroller.scrollable_frame)
+        self.notebook.grid(row=0, column=0, sticky="nsew", padx=(0, self._s(10)), pady=(0, self._s(10)))
+        self.tab_collect = ttk.Frame(self.notebook, padding=(10, 10))
         self.notebook.add(self.tab_collect, text=tr("tab_collect"))
-        self.tab_train   = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_train,   text=tr("tab_train"))
-        self.tab_detection = ttk.Frame(self.notebook)
+        self.tab_train = ttk.Frame(self.notebook, padding=(10, 10))
+        self.notebook.add(self.tab_train, text=tr("tab_train"))
+        self.tab_detection = ttk.Frame(self.notebook, padding=(10, 10))
         self.notebook.add(self.tab_detection, text=tr("tab_detection"))
-        self.tab_text_detection = ttk.Frame(self.notebook)
+        self.tab_text_detection = ttk.Frame(self.notebook, padding=(10, 10))
         self.notebook.add(self.tab_text_detection, text=tr("tab_text"))
-        self.tab_instructions  = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_instructions,  text=tr("tab_instr"))
+        self.tab_instructions = ttk.Frame(self.notebook, padding=(10, 10))
+        self.notebook.add(self.tab_instructions, text=tr("tab_instr"))
         self.last_tab_index = 0
         self.notebook.bind('<<NotebookTabChanged>>', self.on_tab_changed)
-
+        self.logs_frame.columnconfigure(0, weight=1)
+        self.logs_frame.rowconfigure(1, weight=1)
+        self.log_header = ttk.Label(self.logs_frame, text="Activity log", style="Accent.TLabel")
+        self.log_header.grid(row=0, column=0, sticky="w")
         self.log_console = scrolledtext.ScrolledText(
-            self.main_frame.scrollable_frame, height=10, wrap=tk.WORD, font=("Roboto", 12)
+            self.logs_frame, height=8, wrap=tk.WORD, font=("Segoe UI", self._s(11)), highlightthickness=0
         )
-        self.log_console.pack(side=tk.BOTTOM, fill=tk.BOTH, expand=False)
-
-        # ---------- paths, dirs ----------
+        self.log_console.grid(row=1, column=0, sticky="nsew", pady=(6, 0))
+        self._init_style()
         self.csv_file_var = tk.StringVar(value='data/data.csv')
         self.model_file_var = tk.StringVar(value='models/model.h5')
         self.scaler_file_var = tk.StringVar(value='other/scaler.pkl')
         self.images_dir = 'images'
         self._prepare_directories_and_csv()
-
-        # ---------- misc state ----------
         self.current_label = None
         self.flip_vertical = False
         self.flip_horizontal = False
         self.new_index = None
-
-        # ---------- default MediaPipe params ----------
         self.default_static_image_mode = False
         self.default_max_num_hands = 1
         self.default_model_complexity = 1
@@ -174,38 +185,193 @@ class HandDataCollectorApp:
         self.model_complexity_var = tk.IntVar(value=self.default_model_complexity)
         self.min_detection_confidence_var = tk.IntVar(value=int(self.default_min_detection_confidence * 100))
         self.min_tracking_confidence_var = tk.IntVar(value=int(self.default_min_tracking_confidence * 100))
-
-        # ---------- MediaPipe ----------
         self.hands = None
         self._init_mediapipe_hands()
-
-        # ---------- camera ----------
         self.available_cameras = self._detect_cameras(max_cameras=5)
         if not self.available_cameras:
             raise RuntimeError(tr("err_no_camera"))
         self.current_camera_index = self.available_cameras[0]
         self.camera_var = tk.StringVar(value=str(self.current_camera_index))
-
-
-        # ---------- create GUI sub-tabs ----------
         gui_collect.create_collect_tab(self)
         gui_train.create_train_tab(self)
         gui_detection.create_detection_tab(self)
         gui_text_detection.create_text_detection_tab(self)
         gui_instructions.create_instructions_tab(self)
-
         self.cap = None
         self.root.after_idle(self._init_first_camera)
-        # ---------- bindings ----------
         self.root.bind_all("<space>", self._on_space_or_enter)
         self.root.bind_all("<Return>", self._on_space_or_enter)
-
-        # detection flag
         self.detection_running = False
-
-        # start UI updates
+        self.text_detection_running = False
         self.update_frame()
+
+    def _init_style(self):
+        style = ttk.Style()
+        try:
+            style.theme_use("clam")
+        except tk.TclError:
+            pass
+        self.style = style
+        self._apply_theme(self.theme_var.get())
+
+    def _compute_ui_scale(self) -> float:
+        screen_w = self.root.winfo_screenwidth()
+        screen_h = self.root.winfo_screenheight()
+        base_w, base_h = 1366, 900
+        scale = min(screen_w / base_w, screen_h / base_h)
+        # Do not shrink below native size; allow a small bump on high-DPI displays.
+        return max(1.0, min(scale, 1.1))
+
+    def _s(self, value: float) -> int:
+        return max(1, int(round(value * getattr(self, "ui_scale", 1.0))))
+
+    def _apply_theme(self, mode):
+        palettes = {
+            "light": {
+                "bg": "#f4f6fb",
+                "fg": "#111827",
+                "accent": "#2563eb",
+                "panel": "#ffffff",
+                "muted": "#6b7280",
+            },
+            "dark": {
+                "bg": "#0f172a",
+                "fg": "#e5e7eb",
+                "accent": "#38bdf8",
+                "panel": "#111827",
+                "muted": "#9ca3af",
+            },
+            "high-contrast": {
+                "bg": "#000000",
+                "fg": "#ffffff",
+                "accent": "#ffdd00",
+                "panel": "#0a0a0a",
+                "muted": "#f5f5f5",
+            },
+        }
+        colors = palettes.get(mode, palettes["light"])
+        base_font = ("Segoe UI", self._s(12))
+        accent = colors["accent"]
+        bg = colors["bg"]
+        fg = colors["fg"]
+        panel = colors["panel"]
+        muted = colors["muted"]
+        self.root.configure(bg=bg)
+        self.style.configure("TFrame", background=bg)
+        self.style.configure("TLabel", background=bg, foreground=fg, font=base_font)
+        self.style.configure("Accent.TLabel", background=bg, foreground=accent, font=("Segoe UI Semibold", self._s(13)))
+        self.style.configure("TButton", font=base_font, padding=(self._s(12), self._s(8)), background=panel, foreground=fg)
+        self.style.configure("TCheckbutton", background=bg, foreground=fg, font=base_font)
+        self.style.configure("TRadiobutton", background=bg, foreground=fg, font=base_font)
+
+        # Inputs / groups
+        self.style.configure(
+            "TEntry",
+            fieldbackground=panel,
+            foreground=fg,
+            padding=(self._s(8), self._s(6)),
+        )
+        self.style.map(
+            "TEntry",
+            foreground=[("disabled", muted)],
+            fieldbackground=[("disabled", bg), ("readonly", panel)],
+        )
+
+        self.style.configure(
+            "TCombobox",
+            fieldbackground=panel,
+            background=panel,
+            foreground=fg,
+            arrowcolor=fg,
+            padding=(self._s(8), self._s(6)),
+        )
+        self.style.map(
+            "TCombobox",
+            foreground=[("disabled", muted), ("readonly", fg)],
+            fieldbackground=[("disabled", bg), ("readonly", panel)],
+            selectbackground=[("readonly", accent)],
+            selectforeground=[("readonly", bg)],
+        )
+
+        self.style.configure(
+            "TLabelframe",
+            background=bg,
+            padding=(self._s(10), self._s(10)),
+        )
+        self.style.configure(
+            "TLabelframe.Label",
+            background=bg,
+            foreground=fg,
+            font=("Segoe UI Semibold", self._s(12)),
+        )
+
+        self.style.configure("TScale", background=bg, troughcolor=panel)
+        self.style.configure("Horizontal.TScale", background=bg, troughcolor=panel)
+        self.style.configure("Vertical.TScale", background=bg, troughcolor=panel)
+
+        self.style.configure("TProgressbar", troughcolor=panel, background=accent)
+        self.style.configure("TScrollbar", troughcolor=panel)
+        self.style.configure("TSeparator", background=panel)
+
+        self.style.configure("TNotebook", background=bg, padding=self._s(4))
+        self.style.configure("TNotebook.Tab", padding=(self._s(16), self._s(10)), font=("Segoe UI Semibold", self._s(12)), background=panel, foreground=fg)
+        self.style.map("TNotebook.Tab", padding=[("selected", (self._s(18), self._s(12)))], background=[("selected", accent)], foreground=[("selected", bg)])
+
+        # Buttons: give a clear hover/pressed state for dark/high-contrast.
+        self.style.map(
+            "TButton",
+            foreground=[("disabled", muted), ("active", bg), ("pressed", bg)],
+            background=[("active", accent), ("pressed", accent)],
+        )
+        for widget in (self.top_bar, self.content_frame, self.logs_frame, getattr(self, "content_scroller", None)):
+            if widget:
+                widget.configure(style="TFrame")
+
+        # Canvas background (scrollable area) must match theme too.
+        if hasattr(self, "content_scroller") and hasattr(self.content_scroller, "canvas"):
+            try:
+                self.content_scroller.canvas.configure(bg=bg)
+            except tk.TclError:
+                pass
+
+        # Theme tk.Text-based widgets (ScrolledText uses a tk.Text under the hood)
+        def _theme_text_widget(w):
+            if not w:
+                return
+            try:
+                w.configure(
+                    bg=panel,
+                    fg=fg,
+                    insertbackground=fg,
+                    selectbackground=accent,
+                    selectforeground=bg,
+                    highlightthickness=0,
+                )
+            except tk.TclError:
+                pass
+
+        _theme_text_widget(getattr(self, "log_console", None))
+        _theme_text_widget(getattr(self, "det_text", None))
+        _theme_text_widget(getattr(self, "text_detection_text", None))
+
+    def change_theme(self, *_):
+        self._apply_theme(self.theme_var.get())
     def restart_camera(self):
+        # Stop any running loops first so they won't read from a released capture.
+        if getattr(self, "detection_running", False):
+            self.detection_running = False
+            if hasattr(self, "det_start_btn"):
+                self.det_start_btn.config(state="normal")
+            if hasattr(self, "det_stop_btn"):
+                self.det_stop_btn.config(state="disabled")
+
+        if getattr(self, "text_detection_running", False):
+            self.text_detection_running = False
+            if hasattr(self, "td_start_btn"):
+                self.td_start_btn.config(state="normal")
+            if hasattr(self, "td_stop_btn"):
+                self.td_stop_btn.config(state="disabled")
+
         if hasattr(self, 'cap') and self.cap and self.cap.isOpened():
             self.cap.release()
         self.cap = self.open_camera(self.current_camera_index)
@@ -214,18 +380,29 @@ class HandDataCollectorApp:
         new = event.widget.index("current")
         old = self.last_tab_index
 
-        if old == self.notebook.index(self.tab_collect):
-            if self.cap and self.cap.isOpened():
-                self.cap.release()
-                self.cap = None
+        # Keep the camera open when leaving Collect; we reuse it for preview
+        # in other tabs.
 
         if old == self.notebook.index(self.tab_detection) and self.detection_running:
             self.detection_running = False
             self.det_start_btn.config(state="normal")
             self.det_stop_btn.config(state="disabled")
 
-        if (new == self.notebook.index(self.tab_collect)
-                and not self.detection_running
+        if old == self.notebook.index(self.tab_text_detection) and getattr(self, "text_detection_running", False):
+            self.text_detection_running = False
+            if hasattr(self, "td_start_btn"):
+                self.td_start_btn.config(state="normal")
+            if hasattr(self, "td_stop_btn"):
+                self.td_stop_btn.config(state="disabled")
+
+        # Ensure the camera is open for tabs that can show a preview.
+        if (new in (
+                self.notebook.index(self.tab_collect),
+                self.notebook.index(self.tab_detection),
+                self.notebook.index(self.tab_text_detection),
+            )
+                and not getattr(self, "detection_running", False)
+                and not getattr(self, "text_detection_running", False)
                 and (self.cap is None or not self.cap.isOpened())):
             self.cap = self.open_camera(self.current_camera_index)
 
@@ -289,6 +466,8 @@ class HandDataCollectorApp:
 
         if hasattr(self, "lang_label"):
             self.lang_label.config(text=tr("language_label"))
+        if hasattr(self, "theme_label"):
+            self.theme_label.config(text=tr("theme_label"))
 
         self.notebook.tab(self.tab_collect,        text=tr("tab_collect"))
         self.notebook.tab(self.tab_train,          text=tr("tab_train"))
@@ -471,7 +650,14 @@ class HandDataCollectorApp:
 
     def update_frame(self):
         current_tab_index = self.notebook.index(self.notebook.select())
-        if current_tab_index == 0 and self.cap and self.cap.isOpened():
+        # Collect tab (0) - show preview with overlays and image adjustments
+        if (
+            current_tab_index == 0
+            and self.cap
+            and self.cap.isOpened()
+            and not self.detection_running
+            and not getattr(self, "text_detection_running", False)
+        ):
             ret, frame = self.cap.read()
             if ret:
                 if self.flip_horizontal:
@@ -521,6 +707,46 @@ class HandDataCollectorApp:
                 imgtk = ImageTk.PhotoImage(image=img)
                 self.camera_label.imgtk = imgtk
                 self.camera_label.configure(image=imgtk)
+
+        # Detection tab - show preview even before pressing Start
+        if (
+            hasattr(self, "det_camera_label")
+            and current_tab_index == self.notebook.index(self.tab_detection)
+            and self.cap
+            and self.cap.isOpened()
+            and not self.detection_running
+        ):
+            ret, frame = self.cap.read()
+            if ret:
+                if self.flip_horizontal:
+                    frame = cv2.flip(frame, 1)
+                if self.flip_vertical:
+                    frame = cv2.flip(frame, 0)
+                imgtk = ImageTk.PhotoImage(
+                    image=Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+                )
+                self.det_camera_label.imgtk = imgtk
+                self.det_camera_label.configure(image=imgtk)
+
+        # Text signing tab - show preview even before starting text detection
+        if (
+            hasattr(self, "text_det_camera_label")
+            and current_tab_index == self.notebook.index(self.tab_text_detection)
+            and self.cap
+            and self.cap.isOpened()
+            and not getattr(self, "text_detection_running", False)
+        ):
+            ret, frame = self.cap.read()
+            if ret:
+                if self.flip_horizontal:
+                    frame = cv2.flip(frame, 1)
+                if self.flip_vertical:
+                    frame = cv2.flip(frame, 0)
+                imgtk = ImageTk.PhotoImage(
+                    image=Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+                )
+                self.text_det_camera_label.imgtk = imgtk
+                self.text_det_camera_label.configure(image=imgtk)
 
         self.root.after(20, self.update_frame)
 
@@ -750,31 +976,31 @@ class HandDataCollectorApp:
         canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
 def open_capture(index: int, warmup_sec: float = 2.0) -> cv2.VideoCapture:
-        sys = platform.system()
-        if sys == "Windows":
-            backends = [cv2.CAP_DSHOW, cv2.CAP_MSMF, cv2.CAP_ANY]
-        elif sys == "Linux":
-            backends = [cv2.CAP_V4L2, cv2.CAP_ANY]
-        else:
-            backends = [cv2.CAP_ANY]
+    sys = platform.system()
+    if sys == "Windows":
+        backends = [cv2.CAP_DSHOW, cv2.CAP_MSMF, cv2.CAP_ANY]
+    elif sys == "Linux":
+        backends = [cv2.CAP_V4L2, cv2.CAP_ANY]
+    else:
+        backends = [cv2.CAP_ANY]
 
-        for be in backends:
-            cap = cv2.VideoCapture(index, be)
-            if not cap.isOpened():
-                cap.release()
-                continue
-
-            cap.set(cv2.CAP_PROP_BUFFERSIZE, 1) 
-            t0 = time.time()
-            while time.time() - t0 < warmup_sec:
-                ok, _ = cap.read()
-                if ok:
-                    return cap
-                time.sleep(0.05)
-
+    for be in backends:
+        cap = cv2.VideoCapture(index, be)
+        if not cap.isOpened():
             cap.release()
+            continue
 
-        raise RuntimeError(f"Cannot open camera index {index}")
+        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        t0 = time.time()
+        while time.time() - t0 < warmup_sec:
+            ok, _ = cap.read()
+            if ok:
+                return cap
+            time.sleep(0.05)
+
+        cap.release()
+
+    raise RuntimeError(f"Cannot open camera index {index}")
 def main():
     root = tk.Tk()
     app = HandDataCollectorApp(root)
