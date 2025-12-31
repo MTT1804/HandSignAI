@@ -1,17 +1,19 @@
 import os
-import pandas as pd
+import platform
+
 import joblib
 import numpy as np
+import pandas as pd
 import psutil
-import platform
+from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
+from sklearn.utils import shuffle
 from tensorflow import keras
+from tensorflow.config import list_physical_devices
 from tensorflow.keras import layers
 from tensorflow.keras.callbacks import EarlyStopping
-from tensorflow.config import list_physical_devices
-from sklearn.metrics import confusion_matrix, classification_report
-from sklearn.utils import shuffle
+
 from locales import tr
 
 
@@ -42,26 +44,27 @@ class EpochProgressCallback(keras.callbacks.Callback):
 
 
 def run_training_in_thread(app):
-    gpus = list_physical_devices('GPU')
+    gpus = list_physical_devices("GPU")
     if gpus:
         gpu_names = [gpu.name for gpu in gpus]
         app.log(f"Training on GPU(s): {', '.join(gpu_names)}")
     else:
         app.log("Training on CPU")
 
-    sys = platform.system()
+    sys_name = platform.system()
     rel = platform.release()
     proc = platform.processor() or "unknown"
     cores = os.cpu_count()
-    app.log(f"System: {sys} {rel} ({platform.machine()})")
+    app.log(f"System: {sys_name} {rel} ({platform.machine()})")
     app.log(f"CPU: {proc}, cores: {cores}")
 
-    if psutil:
+    try:
         mem = psutil.virtual_memory()
         total_gb = mem.total / (1024**3)
         app.log(f"RAM total: {total_gb:.1f} GB")
-    else:
-        app.log("psutil not installed; skipping RAM info")
+    except Exception:
+        app.log("RAM info not available")
+
     csv_path = app.csv_file_var.get()
     model_path = app.model_file_var.get()
     scaler_path = app.scaler_file_var.get()
@@ -98,11 +101,9 @@ def run_training_in_thread(app):
         app.log(tr("log_split_error", err=str(exc)))
         return
 
-    y_train_encoded = pd.get_dummies(y_train)
-    y_test_encoded = pd.get_dummies(y_test)
-
-    label_map = {i: lab for i, lab in enumerate(y_train_encoded.columns)}
-    print("Class map:", label_map)
+    classes = sorted(pd.unique(y))
+    y_train_encoded = pd.get_dummies(pd.Categorical(y_train, categories=classes))
+    y_test_encoded = pd.get_dummies(pd.Categorical(y_test, categories=classes))
 
     scaler = StandardScaler()
     X_train_scaled = scaler.fit_transform(X_train)
@@ -130,16 +131,16 @@ def run_training_in_thread(app):
     model.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
     app.log(tr("log_model_summary", summary=model.summary()))
 
-    val_split = getattr(app, "val_split_var", None)
-    val_split = val_split.get() if val_split else 0.1
+    val_split_var = getattr(app, "val_split_var", None)
+    val_split = val_split_var.get() if val_split_var else 0.1
 
-    monitor_choice = getattr(app, "monitor_var", None)
-    monitor_choice = monitor_choice.get() if monitor_choice else "val_loss"
+    monitor_var = getattr(app, "monitor_var", None)
+    monitor_choice = monitor_var.get() if monitor_var else "val_loss"
 
     early_stop = EarlyStopping(
         monitor=monitor_choice,
         patience=patience,
-        restore_best_weights=True
+        restore_best_weights=True,
     )
     progress_callback = EpochProgressCallback(
         total_epochs=epochs,
@@ -148,31 +149,50 @@ def run_training_in_thread(app):
         root=app.root,
     )
 
-    history = model.fit(
-        X_train_scaled,
-        y_train_encoded,
-        validation_split=val_split,
-        epochs=epochs,
-        batch_size=batch_size,
-        callbacks=[early_stop, progress_callback],
-        verbose=0,
-    )
+    try:
+        history = model.fit(
+            X_train_scaled,
+            y_train_encoded,
+            validation_split=val_split,
+            epochs=epochs,
+            batch_size=batch_size,
+            callbacks=[early_stop, progress_callback],
+            verbose=0,
+        )
 
+        try:
+            app.root.after(0, lambda hist=history: app.show_training_plots(hist))
+        except Exception:
+            pass
 
-    os.makedirs(os.path.dirname(model_path), exist_ok=True)
-    model.save(model_path)
-    app.log(tr("log_model_saved", path=model_path))
+        os.makedirs(os.path.dirname(model_path), exist_ok=True)
+        model.save(model_path)
+        app.log(tr("log_model_saved", path=model_path))
 
-    test_loss, test_acc = model.evaluate(X_test_scaled, y_test_encoded, verbose=0)
-    app.log(tr("log_test_accuracy", acc=f"{test_acc:.4f}"))
+        test_loss, test_acc = model.evaluate(X_test_scaled, y_test_encoded, verbose=0)
+        app.log(tr("log_test_accuracy", acc=f"{test_acc:.4f}"))
 
-    y_pred_prob = model.predict(X_test_scaled)
-    y_pred = np.argmax(y_pred_prob, axis=1)
-    y_true = np.argmax(y_test_encoded.values, axis=1)
+        y_pred_prob = model.predict(X_test_scaled)
+        y_pred = np.argmax(y_pred_prob, axis=1)
+        y_true = np.argmax(y_test_encoded.values, axis=1)
 
-    cm = confusion_matrix(y_true, y_pred)
-    app.log(tr("log_confusion_matrix", cm=cm))
-    app.log(classification_report(y_true, y_pred))
-    app.log(tr("log_training_finished"))
-    app.root.after(0, lambda: app.progress_var.set(100.0))
-    app.root.after(0, lambda hist=history: app.show_training_plots(hist))
+        cm = confusion_matrix(y_true, y_pred)
+        app.log(tr("log_confusion_matrix", cm=cm))
+        app.log(classification_report(y_true, y_pred))
+
+        try:
+            app.root.after(0, lambda _cm=cm, _labels=list(classes): app.show_training_confusion_matrix(_cm, _labels))
+        except Exception:
+            pass
+
+        app.log(tr("log_training_finished"))
+    except Exception as exc:
+        try:
+            app.log(tr("log_training_exception", err=str(exc)))
+        except Exception:
+            app.log(f"Training exception: {exc}")
+    finally:
+        try:
+            app.root.after(0, lambda: app.progress_var.set(100.0))
+        except Exception:
+            pass

@@ -1,14 +1,11 @@
-import tkinter as tk
-from app_main import HandDataCollectorApp
+from ctk_app import App
 
-def main():
-    root = tk.Tk()
-    screen_w = root.winfo_screenwidth()
-    screen_h = root.winfo_screenheight()
-    root.geometry(f"{screen_w}x{screen_h}+0+0")
 
-    app = HandDataCollectorApp(root)
-    root.mainloop()
+def main() -> None:
+    app = App()
+    app.protocol("WM_DELETE_WINDOW", app.on_app_close)
+    app.mainloop()
+
 
 if __name__ == "__main__":
     main()

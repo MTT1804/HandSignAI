@@ -5,6 +5,156 @@ STRINGS: dict[str, str] = {
     "tab_detection":        "Sign detection",
     "tab_text":             "Text signing",
     "tab_instr":            "Instructions",
+    "tab_settings":         "Settings",
+
+    # ---------- CTk app ----------
+    "app_title_ctk":        "HandSignAI",
+    "theme_switch":         "Light/Dark",
+    "console_title":        "Logs / Console",
+    "btn_hide_console":     "Hide console",
+    "btn_show_console":     "Show console",
+    "section_stats":        "Stats",
+    "stat_samples":         "Saved samples:",
+    "stat_classes":         "Number of classes:",
+      "section_author":       "About the author",
+      "author_name":         "Mateusz Tyl",
+      "author_info":         "Created as part of an engineering diploma thesis at Warsaw University of Technology. The application was developed in 2025–2026.",
+    "stat_images":          "Saved images:",
+    "stat_csv_size":        "CSV size:",
+    "stat_csv_mtime":       "CSV last modified:",
+    "stat_model_size":      "Model file size:",
+    "cam_preview_placeholder": "Camera preview\n(placeholder)",
+    "ctk_pred_title":       "Recognised sign / word",
+    "lbl_top10":            "Top 10",
+    "lbl_hands_detected":   "Hands detected: {n}",
+
+    # ---------- detection prerequisites ----------
+    "det_missing_files_title": "Detection unavailable",
+    "det_missing_files_body":
+      "Missing/invalid files required for detection:\n"
+      "{files}\n\n"
+      "First go to \"{step1}\" to collect data, then \"{step2}\" to train the model.",
+    "det_missing_csv":     "CSV: {path}",
+    "det_invalid_csv":     "CSV invalid (missing header/label): {path}",
+    "det_missing_model":   "Model: {path}",
+    "det_missing_scaler":  "Scaler: {path}",
+
+    # ---------- common CTk buttons ----------
+    "btn_clear":            "Clear",
+    "btn_restart":          "Restart",
+    "btn_restart_camera":   "Restart/Enable camera",
+    "btn_flip_h":           "Flip H",
+    "btn_flip_v":           "Flip V",
+    "btn_save_sample":      "Save sample (Enter/Space)",
+    "btn_undo_last":        "Undo last save",
+    "section_batch":        "Batch processing",
+    "placeholder_batch_folder": "Folder with images…",
+    "btn_browse":           "Browse…",
+    "btn_batch_process":    "Process folder",
+    "chk_batch_save_overlay": "Draw landmarks and labels on output images",
+    "err_batch_folder":     "Choose a valid folder with images.",
+    "err_deps_not_ready":   "The app is still loading. Please wait.",
+    "err_mediapipe_not_ready": "MediaPipe is not ready yet. Please wait.",
+    "log_batch_started":    "Batch: started. Folder={folder}, label={label}",
+    "log_batch_no_images":  "Batch: no images in folder: {folder}",
+    "log_batch_progress":   "Batch: {done}/{total} (saved={saved}, skipped={skipped})",
+    "log_batch_done":       "Batch: done. Total={total}, saved={saved}, skipped={skipped}",
+    "log_batch_failed":     "Batch: error: {err}",
+    "placeholder_label":    "Letter / digit",
+    "btn_apply_paths":      "Apply paths",
+    "btn_apply_detection":  "Apply detection",
+    "btn_delete_all_data":  "Delete ALL data (CSV/Model/Scaler/Images)",
+    "chk_overlay":          "Landmarks overlay",
+    "chk_show_advanced":    "Show advanced",
+
+    # ---------- settings sections ----------
+    "section_general":      "General",
+    "section_paths":        "Paths",
+    "section_quick_open":   "Quick open",
+    "btn_open_images_folder": "Open images folder",
+    "btn_open_models_folder": "Open models folder",
+    "btn_open_csv_file":    "Open CSV file",
+    "err_open_path":        "Cannot open path: {err}",
+    "section_camera":       "Camera",
+    "lbl_camera":           "Camera:",
+    "section_detection":    "Detection",
+    "section_mediapipe":    "MediaPipe",
+    "section_misc":         "Misc",
+    "section_theme":        "Theme",
+    "section_danger_zone":  "Danger zone",
+    "danger_zone_desc":     "Deleting data removes the CSV, model, scaler and images. This cannot be undone.",
+    "btn_save_settings":    "Save changes",
+    "log_settings_applied": "Settings applied.",
+    "lbl_theme_light":      "Theme (Light):",
+    "lbl_theme_dark":       "Theme (Dark):",
+    "theme_blue":           "Blue",
+    "theme_green":          "Green",
+    "theme_dark_blue":      "Dark blue",
+    "theme_purple":         "Purple",
+    "theme_red":            "Red",
+    "theme_orange":         "Orange",
+    "theme_teal":           "Teal",
+    "theme_pink":           "Pink",
+    "theme_yellow":         "Yellow",
+    "theme_lime":           "Lime",
+    "theme_cyan":           "Cyan",
+    "theme_indigo":         "Indigo",
+    "theme_gray":           "Gray",
+    "theme_amber":          "Amber",
+    "btn_apply_theme":      "Apply theme",
+
+    "lbl_camera_size":      "Camera size preset:",
+
+    # ---------- training advanced labels ----------
+    "lbl_val_split":        "Validation split:",
+    "lbl_monitor":          "Monitor:",
+    "training_chart_placeholder": "Training chart (Loss/Accuracy)",
+    "btn_copy_chart":       "Copy chart to clipboard",
+    "log_chart_copied":     "Chart copied to clipboard.",
+    "err_chart_copy":       "Cannot copy chart: {err}",
+
+    "training_cm_title":    "Confusion matrix",
+    "training_cm_placeholder": "Confusion matrix will appear after training.",
+    "training_cm_true":     "True label",
+    "training_cm_pred":     "Predicted label",
+    "btn_copy_cm":          "Copy confusion matrix",
+    "log_cm_copied":        "Confusion matrix copied to clipboard.",
+    "err_cm_copy":          "Cannot copy confusion matrix: {err}",
+
+    # ---------- logs ----------
+    "log_gui_started":      "GUI started.",
+    "startup_loading": "Loading TensorFlow and MediaPipe…",
+    "startup_loading_tf": "Loading TensorFlow…",
+    "startup_loading_mp": "Loading MediaPipe…",
+    "startup_loading_training": "Loading training module…",
+    "startup_loading_failed": "Failed to load dependencies: {err}",
+    "log_language_changed": "Language changed to: {lang}",
+    "log_paths_applied":    "Paths applied.",
+    "log_detection_applied": "Detection settings applied.",
+    "log_detection_started": "Detection started.",
+    "log_detection_stopped": "Detection stopped.",
+    "log_mediapipe_applied": "MediaPipe settings applied.",
+    "log_overlays":         "Overlays: {state}",
+    "log_delete_all_done":  "All data deleted (CSV/Model/Scaler/Images).",
+    "log_delete_all_cancelled": "Delete-all cancelled.",
+    "log_advanced_shown":   "Advanced training options: shown",
+    "log_advanced_hidden":  "Advanced training options: hidden",
+    "log_training_started": "Training started (epochs={epochs}, batch={batch}, split={split}).",
+    "log_text_practice_started": "Text practice started.",
+    "log_text_practice_stopped": "Text practice stopped.",
+    "log_theme":            "Theme: {theme}",
+
+    # ---------- destructive actions ----------
+    "warn_delete_all_data":
+      "WARNING: This will permanently delete the following:\n\n"
+      "- CSV: {csv}\n"
+      "- Model: {model}\n"
+      "- Scaler: {scaler}\n"
+      "- Images directory: {images}\n\n"
+      "This cannot be undone.",
+    "confirm_delete_all_data":
+      "Do you really want to delete EVERYTHING listed in the warning?",
+    "err_delete_all_failed": "Delete failed:\n{err}",
 
     # ---------- common buttons / labels ----------
     "btn_start":            "Start",
@@ -12,6 +162,8 @@ STRINGS: dict[str, str] = {
     "btn_clear_screen":     "Clear screen",
     "lbl_interval":         "Interval (ms):",
     "lbl_threshold":        "Threshold:",
+    "err_bad_interval_threshold": "Invalid interval or threshold.",
+    "warn_interval_threshold_range": "Valid range: interval > 0, threshold in (0, 1].",
 
     # ---------- collect tab ----------
     "lbl_choose_camera":    "Select camera:",
@@ -96,61 +248,206 @@ STRINGS: dict[str, str] = {
     "log_camera_switch":    "Switching camera from {old} to {new}...",
     "log_saved_sample":     "Saved {label} with index {idx} to CSV: {path}.",
     "log_saved_image":      "Saved image to {path}.",
+    "log_save_image_failed": "Failed to save image: {path}.",
+    "log_hand_conf_too_low": "Hand confidence too low ({conf}) — skipping save.",
+    "log_undo_none":        "Nothing to undo.",
+    "log_undo_done":        "Undid the last save (CSV + image).",
+    "log_undo_failed":      "Failed to undo last save: {err}",
         "instructions_text": """\
-INTERFACE GUIDE (ENGLISH)
-=========================
+      # HandSignAI — Instructions
 
-1. DATA COLLECTION
-   – Pick a camera, type a character, hit “Set letter”.
-   – Press “Save data” or Enter to capture frames (saved to images/ + CSV).
-   – Flip vertical with Tab; sliders fix Brightness, Contrast, Gamma, RGB.
-   – Clear images folder and reset CSV delete all collected samples.
+      HandSignAI helps you:
+      - collect hand-sign data (images + CSV with landmarks),
+      - train a model,
+      - recognise signs,
+      - practise with text files.
 
-2. MODEL TRAINING
-   – Paths to CSV, model and scaler are pre-filled.
-   – Keep or change parameters (Test size 0.2, Epochs 30, etc.).
-   – Click “Start training” and wait for 100%; model.h5 & scaler.pkl are created.
+      ## Table of contents
+      1. Quick start (4 steps)
+      2. Default files / folders
+      3. Data collection
+      4. Model training
+      5. Sign detection
+      6. Text practice
+      7. Settings
+      8. Keyboard shortcuts
+      9. Troubleshooting (quick)
 
-3. SIGN DETECTION
-   – Click “Start Detection”, detected letters appear in the text box.
-   – Adjust “Threshold” to filter out wrong guesses.
-   – Increase “Interval (ms)” or lower model_complexity if slow.
+      > Note: on startup the app first loads TensorFlow and MediaPipe (loading screen).
+      > The full UI appears afterwards.
 
-4. TEXT PRACTICE
-   – Choose a .txt file → “Load text” → “Start”.
-   – Correctly recognised letters turn green; stats update live.
+      ---
 
-COMMON HICCUPS → QUICK FIXES
-• No video?
-  – Close other webcam apps or pick a different camera index.
-• Blurry/dark image?
-  – Increase Brightness/Contrast, tweak Gamma or RGB sliders.
-• No hand detected?
-  – Center your hand, improve lighting.
-• Empty CSV?
-  – Record at least one frame in Data Collection.
-• Training errors (stratify, etc.)?
-  – Ensure every class has samples; collect more if needed.
-• Training too slow?
-  – Lower Epochs or Batch size.
-• Model won’t load?
-  – Verify .h5 path and TensorFlow version.
-• Scaler load fails?
-  – Point to the correct scaler.pkl.
-• Detection slow?
-  – Increase Interval(ms) or decrease model_complexity.
-• Random letters?
-  – Raise Threshold or retrain with better data.
-• Missing text_files folder?
-  – Create it and add plain .txt files.
-• “Load text” does nothing?
-  – Ensure files are plain UTF‑8 text without BOM.
-• App freezes/crashes?
-  – Check other/logs.log and available RAM.
-• Keyboard shortcuts unresponsive?
-  – Focus the app window; use Tab=Flip, Space/Enter=Save, q=Quit.
-""",
-    "language_label": "Language/Język:",
+      ## 1) Quick start (recommended flow)
+      1) **Data collection**: collect samples for every sign/class you want.
+      2) **Model training**: train on your CSV.
+      3) **Sign detection**: start detection and check quality.
+      4) (Optional) **Text practice**: practise recognition on text.
+
+      ---
+
+      ## 2) Default files / folders
+      ```
+      main/data/data.csv            # dataset (features + label column)
+      main/images/<label>/...       # saved images
+      main/models/model.h5          # trained model
+      main/other/scaler.pkl         # feature scaler
+      main/other/settings.json      # saved settings
+      text_files/*.txt              # text practice files
+      ```
+
+      ---
+
+      ## 3) Data collection
+      **Goal:** collect examples for each class (e.g. letters/digits and "#").
+
+      ### Step by step
+      1. Type a label (e.g. `A`, `B`, `1`, `#`).
+      2. Set label (button or `Ctrl+Enter`).
+      3. Save samples (`Enter` / `Space` / `Ctrl+S`).
+
+      ### What is saved?
+      - one row appended to `data.csv` (landmarks + `label`),
+      - one image saved into `images/<label>/...`.
+
+      ### Quality guard
+      - saving is blocked when **no hand** is detected or **confidence is too low**,
+      - `Undo last save` removes the last CSV row and the corresponding image.
+
+      ### Self-timer
+      - set seconds, enable self-timer, press `Start`,
+      - `Loop` repeats countdown and saves continuously.
+
+      ### Batch processing (folder of images)
+      - choose a folder (including subfolders), set the label,
+      - `Process folder` extracts landmarks and appends to CSV, and saves images into `images/<label>/...`,
+      - optional overlay draws landmarks/label on output images.
+
+      ### Overlay + Flip
+      - overlay shows landmarks and a label (label + index),
+      - `Flip H` / `Flip V` flips the camera view.
+
+      ---
+
+      ## 4) Model training
+      - `Start training` runs training in the background.
+      - `Show advanced` reveals extra parameters.
+      - after training you get Loss/Accuracy charts.
+      - `Copy chart to clipboard` copies the chart (Windows).
+
+      Tip: if you have a small dataset, start with fewer epochs (e.g. 10).
+
+      ---
+
+      ## 5) Sign detection
+      - `Start/Stop` toggles recognition.
+      - `Interval (ms)` controls prediction frequency (higher = less CPU).
+      - `Threshold` filters predictions (higher = fewer mistakes, more “—”).
+      - `Insert only after Enter` requires manual confirmation.
+      - `Top 10` shows the most probable classes.
+
+      ---
+
+      ## 6) Text practice
+      1. Pick a `.txt` file from `text_files`.
+      2. Click `Load text`, then `Start`.
+      3. The app checks characters in order and updates stats.
+
+      ---
+
+      ## 7) Settings
+      - Light/Dark mode + separate accent color for each,
+      - Quick-open: images / models / CSV,
+      - custom paths for CSV/model/scaler,
+      - MediaPipe parameters (max hands, model_complexity, confidence thresholds).
+
+      ---
+
+      ## 8) Keyboard shortcuts
+      > Action shortcuts depend on the active view.
+      > If you are typing inside an input field, the app won’t steal Space/Enter.
+
+      ### Navigation
+      | Shortcut | Action |
+      |---|---|
+      | F1 | Instructions |
+      | F2 | Data collection |
+      | F3 | Sign detection |
+      | F4 | Model training |
+      | F5 | Text practice |
+      | F6 | Settings |
+      | Ctrl+1..Ctrl+6 | Same as the sidebar order |
+      | Ctrl+Tab | Next view |
+      | Ctrl+Shift+Tab | Previous view |
+
+      ### Global
+      | Shortcut | Action |
+      |---|---|
+      | Ctrl+L | Toggle console |
+      | Ctrl+Shift+T | Toggle Light/Dark |
+      | Ctrl+Q | Quit |
+
+      ### Data collection
+      | Shortcut | Action |
+      |---|---|
+      | Enter / Space / Ctrl+S | Save sample |
+      | Ctrl+Z | Undo last save |
+      | Ctrl+Enter | Set label from input |
+      | Alt+T | Start/Stop self-timer |
+      | Alt+Y | Enable/disable self-timer |
+      | Alt+L | Self-timer loop |
+      | Alt+O | Toggle overlay |
+      | Ctrl+B | Browse batch folder |
+      | Alt+B | Run batch processing |
+      | Alt+R | Restart camera |
+      | Alt+H / Alt+V | Flip H / Flip V |
+
+      ### Sign detection
+      | Shortcut | Action |
+      |---|---|
+      | Alt+S | Start |
+      | Alt+X | Stop |
+      | Alt+C | Clear buffer |
+      | Alt+R | Restart camera |
+      | Alt+H / Alt+V | Flip H / Flip V |
+      | Alt+E | Toggle “only after Enter” |
+
+      ### Training
+      | Shortcut | Action |
+      |---|---|
+      | Alt+R | Start training |
+      | Alt+A | Toggle advanced |
+      | Alt+C | Copy chart to clipboard |
+
+      ### Text practice
+      | Shortcut | Action |
+      |---|---|
+      | Alt+L | Load text |
+      | Alt+S | Start |
+      | Alt+X | Stop |
+      | Alt+R | Restart camera |
+      | Alt+H / Alt+V | Flip H / Flip V |
+      | Alt+O | Toggle overlay |
+
+      ---
+
+      ## 9) Troubleshooting (quick)
+      - **No video:** close other webcam apps, press `Restart`, change “Cam …”.
+      - **Random letters:** increase `Threshold` (e.g. 0.8–0.9), collect more data, retrain.
+      - **Slow:** increase `Interval (ms)`, reduce `model_complexity` / max hands.
+      - **Detection unavailable:** collect data → train model → then detection.
+      """,
+    "language_label": "Language:",
+  "theme_label": "Theme:",
+
+  # ---------- camera placeholder ----------
+  "cam_placeholder_title": "Camera inactive",
+  "cam_placeholder_subtitle": "Select a camera and click Restart",
+
+  # ---------- activity log ----------
+  "log_header": "Activity log",
+  "btn_hide_log": "Hide log",
+  "btn_show_log": "Show log",
     "dlg_error": "Error",
 "dlg_warning": "Warning",
 "dlg_confirm": "Confirmation",
@@ -225,6 +522,41 @@ COMMON HICCUPS → QUICK FIXES
 "log_flip_horizontal_off": "Horizontal flip: OFF",
 "log_flip_vertical_on": "Vertical flip: ON",
 "log_flip_vertical_off": "Vertical flip: OFF",
-"btn_restart_camera": "Restart camera\nif it doesn't work",
+"camera_preset_small": "Small",
+"camera_preset_medium": "Medium",
+"camera_preset_large": "Large",
+"overlay_label": "Label: {label}",
+"overlay_label_idx": "Label: {label} | Index: {idx}",
+"log_view_changed": "View changed: {view}",
+"log_view_on_show_error": "View on_show error: {err}",
+"log_camera_open_failed": "Cannot open camera index {idx}.",
+"log_camera_opened": "Camera opened (index={idx}).",
+"log_camera_consumer_error": "Camera consumer error: {err}",
+"log_detection_error": "Detection error: {err}",
+"log_plot_error": "Plot error: {err}",
+"log_history_keys": "History keys: {keys}",
+"log_camera_size_preset": "Camera size preset: {preset}",
+"log_training_exception": "Training failed: {err}",
+"log_settings_loaded": "Loaded settings from: {path}",
+"log_settings_load_failed": "Failed to load settings: {err}",
+"log_settings_saved": "Saved settings to: {path}",
+"log_settings_save_failed": "Failed to save settings: {err}",
+"lbl_self_timer": "Self-timer",
+"lbl_self_timer_seconds": "Seconds:",
+"chk_self_timer_loop": "Loop",
+"lbl_self_timer_countdown": "Capturing in {seconds}s…",
+"btn_self_timer_start": "Start timer",
+"btn_self_timer_cancel": "Cancel",
+"err_timer_seconds": "Seconds must be a positive integer.",
+"log_self_timer_started": "Self-timer started ({seconds}s).",
+"log_self_timer_fired": "Self-timer: saving sample.",
+"btn_restart_camera": "Restart/Enable camera",
 "log_camera_restarted": "Camera has been restarted"
+ ,"log_camera_restarting": "Restarting camera…"
+
+ ,"plot_loss": "Loss"
+ ,"plot_accuracy": "Accuracy"
+ ,"plot_epoch": "Epoch"
+ ,"plot_train": "Train"
+ ,"plot_val": "Validation"
 }

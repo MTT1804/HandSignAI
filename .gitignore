@@ -1,9 +1,12 @@
 venv/
+.venv/
 __pycache__/
 *.pyc
 *.pkl
 *.h5
 *.csv
 images/
+main/images/
 *.log
 *.mp4
+main/other/settings.json

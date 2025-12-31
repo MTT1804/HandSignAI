@@ -31,8 +31,8 @@ Aplikacja służy do
 1. Sklonuj repozytorium:
 
    ```bash
-   git clone https://github.com/MTT555/Projekt_dyplomowy.git
-   cd Projekt_dyplomowy
+   git clone https://github.com/MTT1804/HandSignAI.git
+   cd HandSignAI
    ```
 2. Utwórz i aktywuj wirtualne środowisko:
 
@@ -52,24 +52,22 @@ Aplikacja służy do
 ## Struktura projektu
 
 ```text
-Projekt_dyplomowy/
-├── main/                   # Główny kod aplikacji
-│   ├── app_main.py         # Logika GUI i główna klasa aplikacji
-│   ├── gui_collect.py      # Zakładka zbierania danych
-│   ├── gui_train.py        # Zakładka treningu modelu
-│   ├── gui_detection.py    # Zakładka detekcji znaków
-│   ├── gui_text_detection.py # Zakładka wykrywania tekstu migowego
-│   ├── gui_instructions.py # Zakładka instrukcji w aplikacji
-│   ├── detection.py        # Funkcje detekcji dłoni i predykcji
-│   ├── training.py         # Skrypt trenowania modelu
-│   └── utils.py            # Pomocnicze funkcje
-├── images/                 # Zapisane obrazy dłoni
-├── data/                   # Plik CSV z danymi landmarków
-├── models/                 # Wytrenowane modele (.h5) i skalery (.pkl)
-├── other/                  # Logi aplikacji i inne pliki
-├── text_files/             # Przykładowe pliki tekstowe do detekcji
-├── requirements.txt        # Lista zależności Pythona
-└── README.md               # Ten plik
+HandSignAI/
+├── main/                    # Kod aplikacji + dane runtime
+│   ├── main.py              # Punkt wejścia uruchamiający GUI
+│   ├── ctk_app/             # Aplikacja CustomTkinter (modułowa)
+│   │   ├── app.py           # Kontroler aplikacji (widoki, kamera, trening)
+│   │   ├── training_worker.py # Trening modelu (TensorFlow/Keras)
+│   │   └── views/           # Widoki GUI
+│   ├── locales/             # Tłumaczenia (PL/EN)
+│   ├── images/              # Zapisane obrazy dłoni (snapshoty)
+│   ├── data/                # data.csv: cechy + label + index
+│   ├── models/              # Wytrenowany model (.h5)
+│   ├── other/               # settings.json, scaler (.pkl), logi, motywy
+│   └── text_files/          # Pliki tekstowe do zakładki Tekst
+├── requirements.txt         # Lista zależności Pythona
+├── README.md
+└── README.pl.md
 ```
 
 ## Uruchomienie
@@ -87,12 +85,14 @@ Projekt_dyplomowy/
 
 ## Użycie
 
-Po uruchomieniu aplikacji dostępne są cztery główne zakładki:
+Po uruchomieniu aplikacji dostępnych jest sześć głównych zakładek:
 
-1. **Zbieranie danych** – zapisuje obraz dłoni oraz współrzędne landmarków do pliku CSV i folderu `images/`.
-2. **Trening modelu** – ustawia parametry (test size, random state, epochs, batch size, patience) i trenuje model, zapisując wagę modelu i skaler.
-3. **Detekcja znaków** – rozpoznaje litery w czasie rzeczywistym i wyświetla top10 prawdopodobieństw.
-4. **Miganie tekstu** – porównuje rozpoznane litery z dostarczonym plikiem tekstowym i podświetla poprawne znaki.
+1. **Zbieranie danych** – zapisuje snapshot dłoni oraz landmarki do pliku CSV i folderu `main/images/`.
+2. **Detekcja znaków** – rozpoznaje litery w czasie rzeczywistym i wyświetla top-10 prawdopodobieństw.
+3. **Trening modelu** – ustawia parametry i trenuje model, zapisując model (`.h5`) oraz skaler (`.pkl`).
+4. **Tekst** – porównuje rozpoznane litery z dostarczonym plikiem tekstowym.
+5. **Instrukcja** – wbudowana instrukcja użycia aplikacji.
+6. **Ustawienia** – konfiguracja ścieżek, motywu/języka oraz parametrów detekcji i MediaPipe.
 
 Szczegółowa instrukcja jest dostępna w aplikacji, w zakładce **Instrukcja**.
 
@@ -105,15 +105,19 @@ Poniższe kroki pomogą Ci błyskawicznie uruchomić cały pipeline: zebranie da
 1. **Uruchom aplikację** i przejdź do zakładki **„Zbieranie danych”**.  
 2. **Wybierz kamerę** i wpisz aktualnie nagrywaną literę/cyfrę.  
 3. **Ustaw dłoń w wyraźnym świetle**, unikaj cieni i prześwietleń.  
-4. **Kliknij „Zapisz dane”** (lub naciśnij Enter), aby zapisać współrzędne 21 landmarków dłoni do CSV oraz zdjęcie do folderu `images/` 
+4. **Kliknij „Zapisz dane”** (lub naciśnij Enter), aby zapisać współrzędne 21 landmarków dłoni do CSV oraz zdjęcie do folderu `main/images/` 
 5. Powtórz dla każdej klasy, zbierając co najmniej **100–200 próbek** na klasę, poruszając dłonią w różnych kątach.
 
 ### 2. Struktura pliku CSV
 
-- Plik `data/data.csv` zawiera wiersze o długości **44 kolumn**:  
-  - `x0, y0, x1, y1, …, x20, y20` (współrzędne)  
-  - `label` (litera/cyfra)  
-  - `index` (numer próbki)
+- Plik `main/data/data.csv` zawiera jeden wiersz na jedną próbkę. Domyślnie obsługuje do **4 dłoni** (brakujące dłonie są wypełniane zerami):
+   - `h1_x0, h1_y0, …, h1_x20, h1_y20` (landmarki dłoni #1)
+   - …
+   - `h4_x0, h4_y0, …, h4_x20, h4_y20` (landmarki dłoni #4)
+   - `label` (klasa)
+   - `index` (numer próbki)
+
+Razem daje to **170 kolumn** w domyślnej konfiguracji (4 dłonie × 21 landmarków × 2 współrzędne + `label` + `index`).
 
 Sprawdź nagłówek, żeby upewnić się, że wszystkie kolumny są obecne.
 
