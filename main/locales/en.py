@@ -27,6 +27,8 @@ STRINGS: dict[str, str] = {
     "ctk_pred_title":       "Recognised sign / word",
     "lbl_top10":            "Top 10",
     "lbl_hands_detected":   "Hands detected: {n}",
+    "lbl_last_classification_time": "Last classification time: {ms} ms",
+    "lbl_last_classification_times": "Last classification time: MP {mp_ms} ms | Model {model_ms} ms | Total {total_ms} ms",
 
     # ---------- detection prerequisites ----------
     "det_missing_files_title": "Detection unavailable",
@@ -52,6 +54,8 @@ STRINGS: dict[str, str] = {
     "btn_browse":           "Browse…",
     "btn_batch_process":    "Process folder",
     "chk_batch_save_overlay": "Draw landmarks and labels on output images",
+    "chk_collect_augmentation": "Data augmentation (save multiple variants)",
+    "chk_collect_mirror": "Mirror (save flipped samples)",
     "err_batch_folder":     "Choose a valid folder with images.",
     "err_deps_not_ready":   "The app is still loading. Please wait.",
     "err_mediapipe_not_ready": "MediaPipe is not ready yet. Please wait.",
@@ -247,6 +251,7 @@ STRINGS: dict[str, str] = {
     "log_classes_found":    "Detected classes: {classes}",
     "log_camera_switch":    "Switching camera from {old} to {new}...",
     "log_saved_sample":     "Saved {label} with index {idx} to CSV: {path}.",
+    "log_saved_samples_batch": "Saved {label}: {count} samples to CSV: {path}.",
     "log_saved_image":      "Saved image to {path}.",
     "log_save_image_failed": "Failed to save image: {path}.",
     "log_hand_conf_too_low": "Hand confidence too low ({conf}) — skipping save.",

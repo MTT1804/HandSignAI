@@ -296,6 +296,8 @@ STRINGS: dict[str, str] = {
   "ctk_pred_title": "Rozpoznany znak / słowo",
   "lbl_top10": "Top 10",
   "lbl_hands_detected": "Wykryte dłonie: {n}",
+  "lbl_last_classification_time": "Czas klasyfikacji ostatniego znaku: {ms} ms",
+  "lbl_last_classification_times": "Czas klasyfikacji ostatniego znaku: MP {mp_ms} ms | Model {model_ms} ms | Razem {total_ms} ms",
 
   # ---------- wymagania detekcji ----------
   "det_missing_files_title": "Detekcja niedostępna",
@@ -322,6 +324,8 @@ STRINGS: dict[str, str] = {
   "btn_browse": "Przeglądaj…",
   "btn_batch_process": "Przetwórz folder",
   "chk_batch_save_overlay": "Rysuj landmarki i etykiety na zapisanych obrazach",
+  "chk_collect_augmentation": "Augmentacja (zapisz kilka wariantów)",
+  "chk_collect_mirror": "Odbicie lustrzane (zapisz odbite próbki)",
   "err_batch_folder": "Wybierz poprawny folder ze zdjęciami.",
   "err_deps_not_ready": "Aplikacja nadal się ładuje. Poczekaj.",
   "err_mediapipe_not_ready": "MediaPipe nie jest jeszcze gotowy. Poczekaj.",
@@ -453,6 +457,7 @@ STRINGS: dict[str, str] = {
   "log_classes_found": "Wykryte klasy: {classes}",
   "log_camera_switch": "Przełączanie kamery z {old} na {new}",
   "log_saved_sample": "Zapisano dane dla etykiety: {label}, indeks: {idx} -> dopisano do CSV: {path}",
+  "log_saved_samples_batch": "Zapisano {label}: {count} próbek do CSV: {path}.",
   "log_saved_image": "Zapisano plik obrazu: {path}",
   "log_save_image_failed": "Nie udało się zapisać obrazu: {path}.",
   "log_hand_conf_too_low": "Zbyt niska pewność dłoni ({conf}) — pomijam zapis.",

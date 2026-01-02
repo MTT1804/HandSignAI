@@ -101,8 +101,26 @@ class DataCollectionView(ctk.CTkFrame):
         self.set_label_btn = ctk.CTkButton(controls, text=f"✎ {tr('btn_set_label')}", command=self._set_label)
         self.set_label_btn.grid(row=5, column=0, sticky="ew", padx=14, pady=(0, 10))
 
-        self.save_btn = ctk.CTkButton(controls, text=f"↓ {tr('btn_save_sample')}", command=app.save_sample)
-        self.save_btn.grid(row=6, column=0, sticky="ew", padx=14, pady=(0, 10))
+        save_box = ctk.CTkFrame(controls, fg_color="transparent")
+        save_box.grid(row=6, column=0, sticky="ew", padx=14, pady=(0, 10))
+        save_box.grid_columnconfigure(0, weight=1)
+
+        self.save_btn = ctk.CTkButton(save_box, text=f"↓ {tr('btn_save_sample')}", command=app.save_sample)
+        self.save_btn.grid(row=0, column=0, sticky="ew", pady=(0, 6))
+
+        self.augment_chk = ctk.CTkCheckBox(
+            save_box,
+            text=tr("chk_collect_augmentation"),
+            variable=self.app.collect_augment_enabled,
+        )
+        self.augment_chk.grid(row=1, column=0, sticky="w")
+
+        self.mirror_chk = ctk.CTkCheckBox(
+            save_box,
+            text=tr("chk_collect_mirror"),
+            variable=self.app.collect_mirror_enabled,
+        )
+        self.mirror_chk.grid(row=2, column=0, sticky="w")
 
         self.undo_btn = ctk.CTkButton(controls, text=f"↩ {tr('btn_undo_last')}", command=app.undo_last_sample)
         self.undo_btn.grid(row=7, column=0, sticky="ew", padx=14, pady=(0, 10))

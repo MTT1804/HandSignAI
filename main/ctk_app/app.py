@@ -34,6 +34,8 @@ import importlib
 from locales import tr, load
 
 from ctk_app.common import (
+    FEATURES_PER_HAND,
+    LANDMARKS_PER_HAND,
     MAX_HANDS_SUPPORTED,
     _extract_multi_hand_features,
     _multi_hand_header,
@@ -129,6 +131,9 @@ class App(ctk.CTk):
         self.collect_self_timer_enabled = tk.BooleanVar(value=False)
         self.collect_self_timer_seconds = tk.IntVar(value=3)
         self.collect_self_timer_loop_enabled = tk.BooleanVar(value=False)
+
+        self.collect_augment_enabled = tk.BooleanVar(value=False)
+        self.collect_mirror_enabled = tk.BooleanVar(value=True)
 
         self.collect_batch_save_overlay = tk.BooleanVar(value=True)
 
@@ -1470,7 +1475,8 @@ class App(ctk.CTk):
             return
 
         try:
-            csv_path = self._resolve_path(Path(str(self.csv_file_var.get() or "").strip()))
+            info_csv = str(info.get("csv_path") or "").strip()
+            csv_path = self._resolve_path(Path(info_csv)) if info_csv else self._resolve_path(Path(str(self.csv_file_var.get() or "").strip()))
             if not csv_path.exists():
                 self.log(tr("log_undo_failed", err=f"CSV missing: {csv_path}"))
                 return
@@ -1480,23 +1486,39 @@ class App(ctk.CTk):
                 reader = csv.reader(f)
                 rows = list(reader)
 
-            if len(rows) <= 1:
+            batch = info.get("batch") if isinstance(info, dict) else None
+            batch_entries = batch if isinstance(batch, list) else None
+            pop_n = len(batch_entries) if batch_entries else 1
+
+            if len(rows) <= pop_n:
                 self.log(tr("log_undo_none"))
                 return
 
-            rows.pop()
+            for _ in range(pop_n):
+                rows.pop()
             with csv_path.open("w", newline="", encoding="utf-8") as f:
                 writer = csv.writer(f)
                 writer.writerows(rows)
 
-            img_path = Path(str(info.get("img_path") or "").strip())
-            if img_path:
-                img_path = self._resolve_path(img_path)
-                try:
-                    if img_path.exists():
-                        img_path.unlink()
-                except Exception:
-                    pass
+            if batch_entries:
+                for entry in reversed(batch_entries):
+                    img_path = Path(str(entry.get("img_path") or "").strip())
+                    if img_path:
+                        img_path = self._resolve_path(img_path)
+                        try:
+                            if img_path.exists():
+                                img_path.unlink()
+                        except Exception:
+                            pass
+            else:
+                img_path = Path(str(info.get("img_path") or "").strip())
+                if img_path:
+                    img_path = self._resolve_path(img_path)
+                    try:
+                        if img_path.exists():
+                            img_path.unlink()
+                    except Exception:
+                        pass
 
             self._last_saved_sample = None
 
@@ -1524,53 +1546,239 @@ class App(ctk.CTk):
             self.log(tr("err_mediapipe_not_ready"))
             return
 
-        frame = self.last_frame_raw.copy()
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        results = self._hands.process(frame_rgb)
-        if not results.multi_hand_landmarks:
+        try:
+            self._prepare_directories_and_csv()
+        except Exception:
+            pass
+
+        label = str(self.current_label)
+        label_dir = Path(self.images_dir) / label
+        label_dir.mkdir(parents=True, exist_ok=True)
+
+        base_frame = self.last_frame_raw.copy()
+
+        def _augment_one(frame_bgr: np.ndarray, rng: np.random.Generator) -> np.ndarray:
+            h, w = frame_bgr.shape[:2]
+            angle = float(rng.uniform(-8.0, 8.0))
+            scale = float(rng.uniform(0.95, 1.05))
+            tx = float(rng.uniform(-0.05, 0.05) * w)
+            ty = float(rng.uniform(-0.05, 0.05) * h)
+
+            m = cv2.getRotationMatrix2D((w / 2.0, h / 2.0), angle, scale)
+            m[0, 2] += tx
+            m[1, 2] += ty
+            out = cv2.warpAffine(frame_bgr, m, (w, h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT_101)
+
+            alpha = float(rng.uniform(0.90, 1.10))
+            beta = float(rng.uniform(-18.0, 18.0))
+            out = np.clip(out.astype(np.float32) * alpha + beta, 0, 255).astype(np.uint8)
+
+            if float(rng.random()) < 0.5:
+                sigma = float(rng.uniform(3.0, 8.0))
+                noise = rng.normal(0.0, sigma, out.shape).astype(np.float32)
+                out = np.clip(out.astype(np.float32) + noise, 0, 255).astype(np.uint8)
+
+            if float(rng.random()) < 0.2:
+                out = cv2.GaussianBlur(out, (3, 3), 0)
+
+            return out
+
+        def _try_extract_row(frame_bgr: np.ndarray):
+            frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
+            results = self._hands.process(frame_rgb)
+            if not results or not results.multi_hand_landmarks:
+                return None
+            conf = self._mediapipe_results_confidence(results)
+            if conf < MIN_CONF:
+                return None
+            row = _extract_multi_hand_features(results, max_hands=MAX_HANDS_SUPPORTED)
+            return row
+
+        def _mirror_features_row(row: list[float]) -> list[float]:
+            per_hand = FEATURES_PER_HAND
+            xs_per_hand = LANDMARKS_PER_HAND
+
+            hands: list[tuple[float, list[float]]] = []
+            missing_hands: list[list[float]] = []
+            for h in range(MAX_HANDS_SUPPORTED):
+                start = h * per_hand
+                chunk = list(row[start : start + per_hand])
+                if not chunk or all(float(v) == 0.0 for v in chunk):
+                    missing_hands.append([0.0] * per_hand)
+                    continue
+
+                for i in range(xs_per_hand):
+                    xi = i * 2
+                    try:
+                        x = float(chunk[xi])
+                    except Exception:
+                        x = 0.0
+                    chunk[xi] = 1.0 - x
+
+                try:
+                    centroid = float(sum(float(chunk[i * 2]) for i in range(xs_per_hand)) / xs_per_hand)
+                except Exception:
+                    centroid = 0.0
+                hands.append((centroid, chunk))
+
+            hands.sort(key=lambda t: float(t[0]))
+            out: list[float] = []
+            for _, chunk in hands:
+                out.extend(chunk)
+            for chunk in missing_hands:
+                out.extend(chunk)
+            if len(out) < MAX_HANDS_SUPPORTED * per_hand:
+                out.extend([0.0] * ((MAX_HANDS_SUPPORTED * per_hand) - len(out)))
+            return out[: MAX_HANDS_SUPPORTED * per_hand]
+
+        def _try_mirror_frame(frame_bgr: np.ndarray) -> np.ndarray | None:
+            try:
+                return cv2.flip(frame_bgr, 1)
+            except Exception:
+                return None
+
+        augment_enabled = bool(self.collect_augment_enabled.get())
+        mirror_enabled = bool(self.collect_mirror_enabled.get())
+        if not augment_enabled:
+            base_row = _try_extract_row(base_frame)
+            if base_row is None:
+                frame_rgb = cv2.cvtColor(base_frame, cv2.COLOR_BGR2RGB)
+                results = self._hands.process(frame_rgb)
+                if not results or not results.multi_hand_landmarks:
+                    self.log(tr("log_no_hand"))
+                    return
+                conf = self._mediapipe_results_confidence(results)
+                if conf < MIN_CONF:
+                    self.log(tr("log_hand_conf_too_low", conf=f"{conf:.2f}"))
+                    return
+                return
+
+            idx = self._compute_next_image_index(label_dir, label)
+            csv_path = Path(self.csv_file_var.get())
+            saved_entries: list[dict] = []
+
+            def _save_one(frame_bgr: np.ndarray, row, idx_val: int) -> bool:
+                img_path = label_dir / f"{label}_{idx_val}.jpg"
+                try:
+                    ok = bool(cv2.imwrite(str(img_path), frame_bgr))
+                except Exception:
+                    ok = False
+                if not ok:
+                    return False
+                writer.writerow(row + [label, int(idx_val)])
+                saved_entries.append({"label": label, "idx": int(idx_val), "img_path": str(img_path), "csv_path": str(csv_path)})
+                return True
+
+            with csv_path.open("a", newline="", encoding="utf-8") as f:
+                writer = csv.writer(f)
+                if _save_one(base_frame, base_row, int(idx)):
+                    idx += 1
+                    if mirror_enabled:
+                        mirror = _try_mirror_frame(base_frame)
+                        if mirror is not None:
+                            mirror_row = _mirror_features_row(list(base_row))
+                            if _save_one(mirror, mirror_row, int(idx)):
+                                idx += 1
+
+            if not saved_entries:
+                self.log(tr("log_save_image_failed", path=str(label_dir)))
+                return
+
+            if len(saved_entries) == 1:
+                e = saved_entries[0]
+                self.log(tr("log_saved_sample", label=label, idx=int(e.get("idx")), path=str(csv_path)))
+                self._last_saved_sample = e
+            else:
+                self.log(tr("log_saved_samples_batch", label=label, count=len(saved_entries), path=str(csv_path)))
+                self._last_saved_sample = {"batch": saved_entries, "csv_path": str(csv_path)}
+
+            try:
+                self._collect_next_idx_label = label
+                self._collect_next_idx = int(idx)
+            except Exception:
+                pass
+            return
+
+        rng = np.random.default_rng()
+        csv_path = Path(self.csv_file_var.get())
+        idx = self._compute_next_image_index(label_dir, label)
+
+        primary_target = 5
+        max_attempts = 40
+
+        saved_entries: list[dict] = []
+        attempts = 0
+        primary_saved = 0
+
+        with csv_path.open("a", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+
+            def _save_one(frame_bgr: np.ndarray, row, idx_val: int) -> bool:
+                img_path = label_dir / f"{label}_{idx_val}.jpg"
+                try:
+                    ok = bool(cv2.imwrite(str(img_path), frame_bgr))
+                except Exception:
+                    ok = False
+                if not ok:
+                    return False
+                writer.writerow(row + [label, int(idx_val)])
+                saved_entries.append({"label": label, "idx": int(idx_val), "img_path": str(img_path), "csv_path": str(csv_path)})
+                return True
+
+            base_row = _try_extract_row(base_frame)
+            if base_row is not None:
+                if primary_saved < primary_target and _save_one(base_frame, base_row, int(idx)):
+                    primary_saved += 1
+                    idx += 1
+                    if mirror_enabled:
+                        mirror = _try_mirror_frame(base_frame)
+                        if mirror is not None:
+                            mirror_row = _mirror_features_row(list(base_row))
+                            if _save_one(mirror, mirror_row, int(idx)):
+                                idx += 1
+
+            while primary_saved < primary_target and attempts < max_attempts:
+                attempts += 1
+                aug = _augment_one(base_frame, rng)
+                row = _try_extract_row(aug)
+                if row is None:
+                    continue
+
+                img_path = label_dir / f"{label}_{idx}.jpg"
+                try:
+                    ok = bool(cv2.imwrite(str(img_path), aug))
+                except Exception:
+                    ok = False
+                if not ok:
+                    continue
+
+                writer.writerow(row + [label, int(idx)])
+                saved_entries.append({"label": label, "idx": int(idx), "img_path": str(img_path), "csv_path": str(csv_path)})
+                primary_saved += 1
+                idx += 1
+
+                if mirror_enabled:
+                    mirror = _try_mirror_frame(aug)
+                    if mirror is not None:
+                        mirror_row = _mirror_features_row(list(row))
+                        if _save_one(mirror, mirror_row, int(idx)):
+                            idx += 1
+
+        if not saved_entries:
             self.log(tr("log_no_hand"))
             return
 
-        conf = self._mediapipe_results_confidence(results)
-        if conf < MIN_CONF:
-            self.log(tr("log_hand_conf_too_low", conf=f"{conf:.2f}"))
-            return
-
-        row = _extract_multi_hand_features(results, max_hands=MAX_HANDS_SUPPORTED)
-
-        label_dir = Path(self.images_dir) / self.current_label
-        label_dir.mkdir(parents=True, exist_ok=True)
-        idx = self._compute_next_image_index(label_dir, self.current_label)
-
-        img_path = label_dir / f"{self.current_label}_{idx}.jpg"
-        try:
-            ok = bool(cv2.imwrite(str(img_path), frame))
-        except Exception:
-            ok = False
-        if not ok:
-            self.log(tr("log_save_image_failed", path=str(img_path)))
-            return
-
-        csv_path = Path(self.csv_file_var.get())
-        with csv_path.open("a", newline="", encoding="utf-8") as f:
-            writer = csv.writer(f)
-            writer.writerow(row + [self.current_label, idx])
-
-        self.log(tr("log_saved_sample", label=self.current_label, idx=idx, path=str(csv_path)))
+        if len(saved_entries) == 1:
+            e = saved_entries[0]
+            self.log(tr("log_saved_sample", label=label, idx=int(e.get("idx")), path=str(csv_path)))
+            self._last_saved_sample = e
+        else:
+            self.log(tr("log_saved_samples_batch", label=label, count=len(saved_entries), path=str(csv_path)))
+            self._last_saved_sample = {"batch": saved_entries, "csv_path": str(csv_path)}
 
         try:
-            self._last_saved_sample = {
-                "label": str(self.current_label),
-                "idx": int(idx),
-                "img_path": str(img_path),
-                "csv_path": str(csv_path),
-            }
-        except Exception:
-            self._last_saved_sample = {"img_path": str(img_path), "csv_path": str(csv_path)}
-
-        try:
-            self._collect_next_idx_label = self.current_label
-            self._collect_next_idx = int(idx) + 1
+            self._collect_next_idx_label = label
+            self._collect_next_idx = int(idx)
         except Exception:
             pass
 

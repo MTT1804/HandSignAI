@@ -124,6 +124,7 @@ class DetectionView(ctk.CTkFrame):
 
         self.pred_var = tk.StringVar(value="—")
         self.hands_var = tk.StringVar(value=tr("lbl_hands_detected", n=0))
+        self.latency_var = tk.StringVar(value=tr("lbl_last_classification_times", mp_ms="—", model_ms="—", total_ms="—"))
         self.pred_label = ctk.CTkLabel(
             right,
             textvariable=self.pred_var,
@@ -149,14 +150,17 @@ class DetectionView(ctk.CTkFrame):
         self.hands_label = ctk.CTkLabel(right, textvariable=self.hands_var)
         self.hands_label.grid(row=4, column=0, sticky="w", padx=14, pady=(0, 10))
 
+        self.latency_label = ctk.CTkLabel(right, textvariable=self.latency_var)
+        self.latency_label.grid(row=5, column=0, sticky="w", padx=14, pady=(0, 10))
+
         ctk.CTkLabel(
             right,
             text=tr("lbl_top10"),
             font=ctk.CTkFont(size=13, weight="bold"),
-        ).grid(row=5, column=0, sticky="w", padx=14, pady=(0, 6))
+        ).grid(row=6, column=0, sticky="w", padx=14, pady=(0, 6))
 
         self.topk = ctk.CTkTextbox(right, height=170, font=("Consolas", 11))
-        self.topk.grid(row=6, column=0, sticky="ew", padx=14, pady=(0, 14))
+        self.topk.grid(row=7, column=0, sticky="ew", padx=14, pady=(0, 14))
         self.topk.configure(state="disabled")
 
         self._blocker = ctk.CTkFrame(self, corner_radius=0, fg_color=_theme_overlay_bg_hex())
@@ -221,6 +225,10 @@ class DetectionView(ctk.CTkFrame):
         self.video_label.configure(image="", text=tr("cam_preview_placeholder"), bg=self._bg_hex)
         self.set_prediction("—", 0.0)
         self.hands_var.set(tr("lbl_hands_detected", n=0))
+        try:
+            self.latency_var.set(tr("lbl_last_classification_times", mp_ms="—", model_ms="—", total_ms="—"))
+        except Exception:
+            pass
         self._set_topk_text("")
         self._hide_blocker()
 
@@ -331,6 +339,21 @@ class DetectionView(ctk.CTkFrame):
                     frame,
                     threshold=self.app.det_threshold,
                 )
+                try:
+                    mp_ms = getattr(detector, "last_mediapipe_ms", None)
+                    model_ms = getattr(detector, "last_model_ms", None)
+                    if pred_text and pred_text != "—" and mp_ms is not None and model_ms is not None:
+                        total_ms = float(mp_ms) + float(model_ms)
+                        self.latency_var.set(
+                            tr(
+                                "lbl_last_classification_times",
+                                mp_ms=f"{float(mp_ms):.0f}",
+                                model_ms=f"{float(model_ms):.0f}",
+                                total_ms=f"{float(total_ms):.0f}",
+                            )
+                        )
+                except Exception:
+                    pass
                 self._last_pred_ts = now
             else:
                 pred_text, confidence, frame_out, pred_prob = "—", 0.0, frame, None

@@ -150,8 +150,12 @@ class TextPracticeView(ctk.CTkFrame):
         self.hands_label = ctk.CTkLabel(overlay_row, textvariable=self.hands_var)
         self.hands_label.grid(row=0, column=1, sticky="e")
 
+        self.latency_var = tk.StringVar(value=tr("lbl_last_classification_times", mp_ms="—", model_ms="—", total_ms="—"))
+        self.latency_label = ctk.CTkLabel(right, textvariable=self.latency_var)
+        self.latency_label.grid(row=6, column=0, sticky="w", padx=14, pady=(0, 8))
+
         self.text_widget = tk.Text(right, wrap="word", height=10)
-        self.text_widget.grid(row=6, column=0, sticky="nsew", padx=14, pady=(0, 8))
+        self.text_widget.grid(row=7, column=0, sticky="nsew", padx=14, pady=(0, 8))
         self._apply_text_widget_theme()
         self.text_widget.configure(state="disabled")
         self.text_widget.tag_config("correct", underline=1)
@@ -160,14 +164,14 @@ class TextPracticeView(ctk.CTkFrame):
             right,
             text=tr("lbl_top10"),
             font=ctk.CTkFont(size=13, weight="bold"),
-        ).grid(row=7, column=0, sticky="w", padx=14, pady=(0, 6))
+        ).grid(row=8, column=0, sticky="w", padx=14, pady=(0, 6))
 
         self.topk = ctk.CTkTextbox(right, height=160, font=("Consolas", 11))
-        self.topk.grid(row=8, column=0, sticky="ew", padx=14, pady=(0, 8))
+        self.topk.grid(row=9, column=0, sticky="ew", padx=14, pady=(0, 8))
         self.topk.configure(state="disabled")
 
         self.stats = ctk.CTkLabel(right, text="", justify="left")
-        self.stats.grid(row=9, column=0, sticky="ew", padx=14, pady=(0, 14))
+        self.stats.grid(row=10, column=0, sticky="ew", padx=14, pady=(0, 14))
 
         self._blocker = ctk.CTkFrame(self, corner_radius=0, fg_color=_theme_overlay_bg_hex())
         self._blocker.place(relx=0, rely=0, relwidth=1, relheight=1)
@@ -250,6 +254,10 @@ class TextPracticeView(ctk.CTkFrame):
             self.hands_var.set(tr("lbl_hands_detected", n=0))
         except Exception:
             pass
+        try:
+            self.latency_var.set(tr("lbl_last_classification_times", mp_ms="—", model_ms="—", total_ms="—"))
+        except Exception:
+            pass
 
     def _load_text(self) -> None:
         name = self.file_menu.get()
@@ -304,6 +312,21 @@ class TextPracticeView(ctk.CTkFrame):
                     threshold=float(self.threshold.get()),
                 )
                 frame = frame_out
+                try:
+                    mp_ms = getattr(detector, "last_mediapipe_ms", None)
+                    model_ms = getattr(detector, "last_model_ms", None)
+                    if pred_text and pred_text != "—" and mp_ms is not None and model_ms is not None:
+                        total_ms = float(mp_ms) + float(model_ms)
+                        self.latency_var.set(
+                            tr(
+                                "lbl_last_classification_times",
+                                mp_ms=f"{float(mp_ms):.0f}",
+                                model_ms=f"{float(model_ms):.0f}",
+                                total_ms=f"{float(total_ms):.0f}",
+                            )
+                        )
+                except Exception:
+                    pass
                 try:
                     self.hands_var.set(tr("lbl_hands_detected", n=int(hand_count)))
                 except Exception:
